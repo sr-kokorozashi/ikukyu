@@ -898,7 +898,10 @@ async function loadFromSupabase() {
         'Authorization': 'Bearer ' + SUPABASE_KEY
       }
     });
-    if (!res.ok) throw new Error('Load failed: ' + res.status);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('Load failed: ' + res.status + ' ' + errText);
+    }
     const rows = await res.json();
     if (rows && rows.length > 0 && rows[0].data) {
       _supabaseRowId = rows[0].id;
@@ -906,15 +909,19 @@ async function loadFromSupabase() {
       document.getElementById('sync-status').textContent = '☁️ クラウド同期中';
       document.getElementById('sync-status').style.color = 'var(--green)';
       return true;
+    } else if (rows && rows.length === 0) {
+      // テーブルは空 → 初期データを投入
+      document.getElementById('sync-status').textContent = '☁️ 初期化中...';
+      return false;
     }
   } catch(e) {
-    console.error('Supabase load error:', e);
+    console.error('Supabase load error:', e.message);
+    document.getElementById('sync-status').textContent = '❌ ' + e.message.substring(0, 60);
+    document.getElementById('sync-status').style.color = 'var(--red)';
     // フォールバック: localStorageから読み込み
     const local = localStorage.getItem('sr-cases-v2');
     if (local) {
       cases = JSON.parse(local);
-      document.getElementById('sync-status').textContent = '⚠️ ローカルデータを使用中';
-      document.getElementById('sync-status').style.color = 'var(--orange)';
       return true;
     }
   }
