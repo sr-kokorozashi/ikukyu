@@ -267,6 +267,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
       <div class="sidebar-label">ステータス</div>
       <div class="sidebar-item" onclick="filterByStatus('産休前')">🤰 産休前</div>
       <div class="sidebar-item" onclick="filterByStatus('産休中')">🏥 産休中</div>
+      <div class="sidebar-item" onclick="filterByStatus('産後パパ育休中')">🍼 産後パパ育休中</div>
       <div class="sidebar-item" onclick="filterByStatus('育休中')">👶 育休中</div>
       <div class="sidebar-item" onclick="filterByStatus('復帰済')">✅ 復帰済</div>
       <div class="sidebar-item" onclick="filterByStatus('時短中')">⏱ 時短中</div>
@@ -328,6 +329,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
             <option value="">全ステータス</option>
             <option value="産休前">産休前</option>
             <option value="産休中">産休中</option>
+            <option value="産後パパ育休中">産後パパ育休中</option>
             <option value="育休中">育休中</option>
             <option value="復帰済">復帰済</option>
             <option value="時短中">時短中</option>
@@ -1645,9 +1647,17 @@ function getStatus(c) {
     return '復帰済';
   }
   if (c.gender === 'male') {
-    if (c.papa1Start && t >= c.papa1Start && (!c.papa1End || t <= c.papa1End)) return '産後パパ育休中';
-    if (c.ikukyu1Start && t >= c.ikukyu1Start) return '育休中';
-    return b && t >= b ? '育休前' : '育休前';
+    // 産後パパ育休中（第1回）
+    if (c.papa1Start && t >= c.papa1Start && c.papa1End && t <= c.papa1End) return '産後パパ育休中';
+    // 産後パパ育休中（第2回）
+    if (c.papa2Start && t >= c.papa2Start && (!c.papa2End || t <= c.papa2End)) return '産後パパ育休中';
+    // 通常育休中（第1回）
+    if (c.ikukyu1Start && t >= c.ikukyu1Start && (!c.ikukyu1End || t <= c.ikukyu1End)) return '育休中';
+    // 通常育休中（第2回）
+    if (c.ikukyu2Start && t >= c.ikukyu2Start && (!c.ikukyu2End || t <= c.ikukyu2End)) return '育休中';
+    // 産後パパ育休が終わっていて次の育休が未登録の場合も産後パパ育休中とみなす
+    if (c.papa1Start && c.papa1End && t > c.papa1End && !c.ikukyu1Start) return '産後パパ育休中';
+    return '育休前';
   }
   const d = getFemaleDates(c);
   if (d.ikukyuStart && t >= d.ikukyuStart) return '育休中';
