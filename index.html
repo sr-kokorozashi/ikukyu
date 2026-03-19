@@ -911,12 +911,9 @@ async function loadFromSupabase() {
     if (rows && rows.length > 0 && rows[0].data) {
       _supabaseRowId = rows[0].id;
       cases = JSON.parse(rows[0].data);
-      document.getElementById('sync-status').textContent = '☁️ クラウド同期中';
-      document.getElementById('sync-status').style.color = 'var(--green)';
       return true;
     } else if (rows && rows.length === 0) {
       // テーブルは空 → 初期データを投入
-      document.getElementById('sync-status').textContent = '☁️ 初期化中...';
       return false;
     }
   } catch(e) {
@@ -2650,6 +2647,43 @@ function handleImportFile(event) {
 }
 function renderAll() { renderDashboard(); renderCaseTable(); }
 
+// ===== 自動再読み込み（5分ごと） =====
+let _lastSyncTime = Date.now();
+let _autoReloadTimer = null;
+
+async function autoReload() {
+  // モーダルが開いている間はスキップ（編集中のデータを守る）
+  const anyOpen = document.querySelector('.modal-overlay.open');
+  if (anyOpen) {
+    updateSyncStatus();
+    return;
+  }
+  const prev = JSON.stringify(cases);
+  const loaded = await loadFromSupabase();
+  if (loaded) {
+    _lastSyncTime = Date.now();
+    const next = JSON.stringify(cases);
+    if (prev !== next) {
+      renderAll();
+      showToast('🔄 最新データに更新しました');
+    }
+  }
+  updateSyncStatus();
+}
+
+function updateSyncStatus() {
+  const mins = Math.floor((Date.now() - _lastSyncTime) / 60000);
+  const el = document.getElementById('sync-status');
+  if (el) {
+    el.textContent = mins === 0 ? '☁️ 同期済（たった今）' : ('☁️ 同期済（' + mins + '分前）');
+    el.style.color = mins >= 6 ? 'var(--orange)' : 'rgba(255,255,255,0.7)';
+  }
+}
+
+// 1分ごとに表示を更新、5分ごとに再読み込み
+setInterval(updateSyncStatus, 60000);
+setInterval(autoReload, 5 * 60 * 1000);
+
 // INIT
 document.getElementById('today-date').textContent =
   new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
@@ -2666,6 +2700,8 @@ document.getElementById('today-date').textContent =
   } else {
     showToast('✅ データを読み込みました（' + cases.length + '件）');
   }
+  _lastSyncTime = Date.now();
+  updateSyncStatus();
   renderAll();
 })();
 
