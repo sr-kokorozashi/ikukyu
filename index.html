@@ -272,6 +272,10 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
       <div class="sidebar-item" onclick="filterByStatus('復帰済')">✅ 復帰済</div>
       <div class="sidebar-item" onclick="filterByStatus('時短中')">⏱ 時短中</div>
     </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">絞り込み</div>
+      <div class="sidebar-item" onclick="filterByAlert('kobunsho')">📬 公文書待ち</div>
+    </div>
   </aside>
 
   <main class="main">
@@ -298,7 +302,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
         <div class="stat-card green"><div class="stat-label">完了済み</div><div class="stat-value" id="stat-done">0</div><div class="stat-sub">件の手続き</div></div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">🚨 要対応・直近の手続き（14日以内）</div></div>
+        <div class="card-header"><div class="card-title">🚨 期限超過の手続き</div></div>
         <div style="padding:20px;" id="dashboard-upcoming">
           <div class="empty"><div class="empty-icon">📭</div><div class="empty-text">案件を登録してください</div></div>
         </div>
@@ -337,6 +341,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
           <select class="filter-select" id="alert-filter" onchange="renderCaseTable()">
             <option value="">全案件</option>
             <option value="alert">要対応のみ</option>
+            <option value="kobunsho">公文書待ち</option>
           </select>
         </div>
         <div id="case-table-container"></div>
@@ -930,6 +935,19 @@ async function loadFromSupabase() {
   return false;
 }
 
+// 公文書が不要な手続きID（案内系・病院直接手続き等）
+const NO_KOBUNSHO_IDS = new Set([
+  'f-gentei','f-doui','f-fuyo','f-ikkatsu',
+  'f-guide-extend-1y','f-guide-return-18m','f-guide-extend-18m',
+  'm-papa-end-shinsei'
+]);
+function isKobunshoRequired(procId) {
+  if (!procId) return false;
+  if (NO_KOBUNSHO_IDS.has(procId)) return false;
+  if (procId.startsWith('f-guide') || procId.startsWith('m-guide')) return false;
+  return true;
+}
+
 // procStatus helpers: value can be '未'/'不要' (string) or {status:'済', date:'YYYY-MM-DD'} (object)
 function getProcSt(c, procId) {
   var v = c.procStatus && c.procStatus[procId];
@@ -958,6 +976,27 @@ function setProcSt(c, procId, status, date) {
     c.procStatus[procId] = { status: '未', date: null, memo: existingMemo };
   }
 }
+function getKobunsho(c, procId) {
+  var v = c.procStatus && c.procStatus[procId];
+  if (v && typeof v === 'object') return v.kobunsho || '未';
+  return '未';
+}
+async function updateKobunsho(procId, caseId, val, e) {
+  if (e) e.stopPropagation();
+  const c = cases.find(x => x.id === caseId);
+  if (!c) return;
+  if (!c.procStatus) c.procStatus = {};
+  const v = c.procStatus[procId];
+  if (typeof v === 'object' && v !== null) {
+    v.kobunsho = val;
+  } else {
+    c.procStatus[procId] = { status: v || '未', date: null, memo: '', kobunsho: val };
+  }
+  await save();
+  renderAll();
+  openCaseDetail(caseId);
+}
+
 async function updateProcMemo(procId, caseId, memo, e) {
   if (e) e.stopPropagation();
   const c = cases.find(x => x.id === caseId);
@@ -1300,8 +1339,8 @@ function getFemaleProcedures(c) {
     id: 'f-yoiku', no: '②',
     name: '養育期間標準報酬月額特例申出書',
     period: null,
-    deadline: c.returnDate ? addDays(c.returnDate, 60) : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, 14) : null,
+    deadline: c.returnDate ? c.returnDate : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, -7) : null,
     docs: '養育期間標準報酬月額特例申出書・住民票（続柄記載）',
     note: '3歳未満の子を養育する場合',
   });
@@ -1309,8 +1348,8 @@ function getFemaleProcedures(c) {
     id: 'f-gekkan', no: '③',
     name: '育休終了時報酬月額変更届（状況により）',
     period: c.returnDate ? `${fmtDate(c.returnDate)} 〜 ${fmtDate(addDays(c.returnDate, 90))}` : null,
-    deadline: c.returnDate ? addDays(c.returnDate, 100) : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, 89) : null,
+    deadline: c.returnDate ? addDays(c.returnDate, 90) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 85) : null,
     docs: '月額変更届・賃金台帳（復帰後3か月分）',
     note: '復帰後3か月の賃金確定後',
   });
@@ -1568,8 +1607,8 @@ function getMaleProcedures(c) {
     id: 'm-yoiku', no: '②',
     name: '養育期間標準報酬月額特例申出書',
     period: null,
-    deadline: c.returnDate ? addDays(c.returnDate, 60) : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, 14) : null,
+    deadline: c.returnDate ? c.returnDate : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, -7) : null,
     docs: '養育期間標準報酬月額特例申出書・住民票（続柄記載）',
     note: '3歳未満の子を養育する場合',
   });
@@ -1577,8 +1616,8 @@ function getMaleProcedures(c) {
     id: 'm-gekkan', no: '③',
     name: '育休終了時報酬月額変更届（状況により）',
     period: c.returnDate ? `${fmtDate(c.returnDate)} 〜 ${fmtDate(addDays(c.returnDate, 90))}` : null,
-    deadline: c.returnDate ? addDays(c.returnDate, 100) : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, 89) : null,
+    deadline: c.returnDate ? addDays(c.returnDate, 90) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 85) : null,
     docs: '月額変更届・賃金台帳（復帰後3か月分）',
     note: '復帰後3か月の賃金確定後',
   });
@@ -1766,12 +1805,22 @@ function renderCaseTable() {
   const genderF = document.getElementById('gender-filter').value;
   const statusF = document.getElementById('status-filter').value;
   const alertF = document.getElementById('alert-filter').value;
+  function hasKobunshoWaiting(c) {
+    const procs = getProcedures(c).filter(p => !p.isSectionHeader && isKobunshoRequired(p.id));
+    return procs.some(p => {
+      const st = getProcSt(c, p.id);
+      if (st !== '済') return false; // 申請済みのもののみ対象
+      const kb = getKobunsho(c, p.id);
+      return kb === '未';
+    });
+  }
   let filtered = cases.filter(c => {
     if (search && !c.company.toLowerCase().includes(search) && !c.name.toLowerCase().includes(search)) return false;
     if (companyF && c.company !== companyF) return false;
     if (genderF && c.gender !== genderF) return false;
     if (statusF && getStatus(c) !== statusF) return false;
     if (alertF === 'alert' && getAlerts(c).length === 0) return false;
+    if (alertF === 'kobunsho' && !hasKobunshoWaiting(c)) return false;
     return true;
   });
   const container = document.getElementById('case-table-container');
@@ -1788,6 +1837,16 @@ function renderCaseTable() {
     let nextDeadline = '—';
     const futureDead = getProcedures(c).filter(p => !p.isSectionHeader && p.deadline && getProcSt(c, p.id) !== '済' && daysUntil(p.deadline) >= 0).sort((a,b) => a.deadline > b.deadline ? 1 : -1);
     if (futureDead[0]) nextDeadline = `${fmtDate(futureDead[0].deadline)}<br><span style="font-size:10px;">${futureDead[0].name.slice(0,16)}…</span>`;
+    // 公文書待ちフィルター時：待ち手続き名を収集
+    const kobunshoWaitingNames = alertF === 'kobunsho' ? (() => {
+      return getProcedures(c)
+        .filter(p => !p.isSectionHeader && isKobunshoRequired(p.id))
+        .filter(p => getProcSt(c, p.id) === '済' && getKobunsho(c, p.id) === '未')
+        .map(p => p.name.replace(/【.*?】/g, '').trim().slice(0, 20));
+    })() : [];
+    const kobunshoChips = kobunshoWaitingNames.length > 0
+      ? kobunshoWaitingNames.map(n => `<span class="alert-chip" style="background:#e8f0fd;color:#2980b9;">📬 ${n}</span>`).join('')
+      : '';
     return `<tr class="row-link" onclick="openCaseDetail('${c.id}')">
       <td>${gLabel}</td>
       <td><strong>${c.company}</strong></td>
@@ -1797,9 +1856,10 @@ function renderCaseTable() {
       <td class="date-display">${fmtDate(c.birthDate)}</td>
       <td class="date-display" style="font-size:11px;">${nextDeadline}</td>
       <td><div class="alert-row">
-        ${overdue > 0 ? `<span class="alert-chip red">超過${overdue}件</span>` : ''}
-        ${soon > 0 ? `<span class="alert-chip orange">7日内${soon}件</span>` : ''}
-        ${alerts.length === 0 ? '<span style="font-size:11px;color:var(--text-muted);">問題なし</span>' : ''}
+        ${kobunshoChips}
+        ${!kobunshoChips && overdue > 0 ? `<span class="alert-chip red">超過${overdue}件</span>` : ''}
+        ${!kobunshoChips && soon > 0 ? `<span class="alert-chip orange">7日内${soon}件</span>` : ''}
+        ${!kobunshoChips && alerts.length === 0 ? '<span style="font-size:11px;color:var(--text-muted);">問題なし</span>' : ''}
       </div></td>
     </tr>`;
   }).join('');
@@ -1836,18 +1896,27 @@ function openCaseDetail(id) {
     const dateInput = st === '済' ? `<br><input type="date" value="${stDate||''}" style="margin-top:4px;font-size:10px;border:1px solid var(--green);border-radius:4px;padding:2px 4px;color:var(--green);background:var(--green-bg);width:120px;" onchange="updateProcDate('${p.id}','${id}',this.value,event)" onclick="event.stopPropagation()">` : '';
     const escapedMemo = (stMemo || '').replace(/"/g, '&quot;');
     const memoInput = `<input type="text" value="${escapedMemo}" placeholder="備考" style="margin-top:5px;display:block;width:100%;font-size:11px;border:1px solid #c5d8ee;border-radius:4px;padding:3px 7px;font-family:inherit;color:#6a8fad;background:#f0f5fb;" onchange="updateProcMemo('${p.id}','${id}',this.value,event)" onclick="event.stopPropagation()">`;
+    const needsKobunsho = isKobunshoRequired(p.id);
+    const kobunshoSt = needsKobunsho ? getKobunsho(c, p.id) : null;
+    const kobunshoCell = needsKobunsho ? `
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px;">
+        <span style="font-size:10px;color:var(--text-muted);min-width:36px;">公文書</span>
+        <button class="status-btn ${kobunshoSt === '済' ? '済' : kobunshoSt === '不要' ? '不要' : '未'}" style="font-size:10px;padding:2px 8px;" onclick="updateKobunsho('${p.id}','${id}','${kobunshoSt === '未' ? '済' : '未'}',event)">${kobunshoSt === '済' ? '済' : '未'}</button>
+        ${kobunshoSt !== '不要' ? `<button class="status-btn 不要" style="font-size:10px;padding:2px 8px;" onclick="updateKobunsho('${p.id}','${id}','${kobunshoSt === '不要' ? '未' : '不要'}',event)">不要</button>` : `<button class="status-btn 不要" style="font-size:10px;padding:2px 8px;" onclick="updateKobunsho('${p.id}','${id}','未',event)">不要解除</button>`}
+      </div>` : '';
     return `<tr>
       <td style="white-space:nowrap;color:var(--text-muted);font-size:11px;">${p.no}</td>
       <td style="max-width:200px;font-size:12px;">${p.name}${p.note ? `<br><span style="font-size:10px;color:var(--text-muted);white-space:pre-line;">${p.note}</span>` : ''}</td>
       <td style="font-size:11px;color:var(--text-muted);max-width:160px;">${p.period || '—'}</td>
       <td style="font-size:11px;max-width:200px;color:var(--text-muted);">${p.docs || '—'}</td>
       <td style="white-space:nowrap;font-size:11px;${deadlineStyle}">${p.deadline ? fmtDate(p.deadline) : '—'}${daysLabel}</td>
-      <td style="min-width:200px;">
+      <td style="min-width:220px;">
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
           <button class="status-btn ${displaySt}" onclick="toggleStatus('${p.id}','${id}',event)">${displaySt}</button>
           ${st !== '不要' ? `<button class="status-btn 不要" style="font-size:10px;" onclick="setIryo('${p.id}','${id}',event)">不要</button>` : ''}
           ${dateInput}
         </div>
+        ${kobunshoCell}
         ${memoInput}
       </td>
     </tr>`;
@@ -2022,7 +2091,7 @@ function renderDashboard() {
       if (status === '済' || status === '不要') { if(status==='済') done++; return; }
       if (!p.deadline) return;
       const days = daysUntil(p.deadline);
-      if (days !== null && days <= 14) upcomingItems.push({ c, p, days });
+      if (days !== null && days < 0) upcomingItems.push({ c, p, days });
     });
   });
   document.getElementById('stat-total').textContent = cases.length;
@@ -2034,7 +2103,7 @@ function renderDashboard() {
   upcomingItems.sort((a,b) => a.days - b.days);
   const el = document.getElementById('dashboard-upcoming');
   if (upcomingItems.length === 0) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">直近14日以内の期限はありません</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">期限超過の手続きはありません</div></div>`;
     return;
   }
   el.innerHTML = `<div class="upcoming-list">${upcomingItems.slice(0,10).map(({c,p,days}) => {
@@ -2090,6 +2159,7 @@ function openNewCaseModal(gender) {
   document.getElementById(gender === 'male' ? 'modal-new-male' : 'modal-new-female').classList.add('open');
 }
 function filterByStatus(s) { document.getElementById('status-filter').value = s; document.getElementById('gender-filter').value = ''; openPage('cases'); renderCaseTable(); }
+function filterByAlert(a) { document.getElementById('alert-filter').value = a; document.getElementById('status-filter').value = ''; document.getElementById('gender-filter').value = ''; openPage('cases'); renderCaseTable(); }
 function filterByGender(g) { document.getElementById('gender-filter').value = g; document.getElementById('status-filter').value = ''; openPage('cases'); renderCaseTable(); }
 function switchTab(name) {
   ['female-client','male-client','internal'].forEach(t => {
