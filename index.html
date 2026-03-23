@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>産休・育休管理システム v2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -1321,6 +1324,31 @@ function getFemaleProcedures(c) {
           });
         }
       }
+    });
+  }
+
+  // ── 育休延長申出書（1歳6か月・2歳） ──
+  if (c.ikukyuExtend === '18m' || c.ikukyuExtend === '2y') {
+    procs.push({ section: '【育休延長手続き】', isSectionHeader: true });
+    procs.push({
+      id: 'f-ikukyu-extend-18m', no: '①',
+      name: '育児休業等取得者申出書（1歳6か月まで延長）',
+      period: d.ikukyuEnd1 ? `${fmtDate(addDays(d.ikukyuEnd1, 1))} 〜 ${fmtDate(d.ikukyuEnd18m)}` : null,
+      deadline: d.ikukyuEnd1 ? d.ikukyuEnd1 : null,
+      sendDate: d.ikukyuEnd1 ? addDays(d.ikukyuEnd1, -14) : null,
+      docs: '育児休業等取得者申出書（延長）・入所保留通知書・保育所等利用申込書の写し・延長事由認定申告書',
+      note: '1歳到達日までに提出。社保免除の継続申出も兼ねる。',
+    });
+  }
+  if (c.ikukyuExtend === '2y') {
+    procs.push({
+      id: 'f-ikukyu-extend-2y', no: '②',
+      name: '育児休業等取得者申出書（2歳まで延長）',
+      period: d.ikukyuEnd18m ? `${fmtDate(addDays(d.ikukyuEnd18m, 1))} 〜 ${fmtDate(d.ikukyuEnd)}` : null,
+      deadline: d.ikukyuEnd18m ? d.ikukyuEnd18m : null,
+      sendDate: d.ikukyuEnd18m ? addDays(d.ikukyuEnd18m, -14) : null,
+      docs: '育児休業等取得者申出書（延長）・入所保留通知書・保育所等利用申込書の写し・延長事由認定申告書',
+      note: '1歳6か月到達日までに提出。社保免除の継続申出も兼ねる。',
     });
   }
 
