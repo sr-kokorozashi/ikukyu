@@ -1856,6 +1856,12 @@ function renderCaseTable() {
     container.innerHTML = `<div class="empty" style="padding:60px 20px;"><div class="empty-icon">📋</div><div class="empty-text">案件がありません</div></div>`;
     return;
   }
+  // 出産予定日順（未設定は末尾）
+  filtered.sort((a, b) => {
+    const da = a.dueDate || '9999-99-99';
+    const db = b.dueDate || '9999-99-99';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
   const rows = filtered.map(c => {
     const status = getStatus(c);
     const alerts = getAlerts(c);
