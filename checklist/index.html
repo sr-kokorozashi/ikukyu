@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>手続きチェックリスト | SR Office</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;font-size:13px;color:#1E293B;}
+
+/* ナビ */
+#nav{background:#0F172A;height:50px;display:flex;align-items:center;padding:0 20px;gap:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+#nav .brand{color:#fff;font-size:14px;font-weight:700;padding-right:20px;border-right:1px solid rgba(255,255,255,.15);margin-right:8px;white-space:nowrap;}
+.ntab{padding:0 18px;height:50px;display:flex;align-items:center;color:rgba(255,255,255,.6);font-size:12px;font-weight:500;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}
+.ntab:hover{color:#fff;background:rgba(255,255,255,.06);}
+.ntab.on{color:#fff;border-bottom-color:#3B82F6;background:rgba(59,130,246,.1);}
+#nav .sync{margin-left:auto;font-size:10px;color:rgba(255,255,255,.45);}
+
+/* レイアウト */
+#app{display:flex;height:calc(100vh - 50px);}
+
+/* サイドバー */
+#sb{width:220px;background:#1E293B;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;}
+#sb-top{padding:12px;border-bottom:1px solid rgba(255,255,255,.08);}
+#btn-new{width:100%;background:#2563EB;border:none;color:#fff;padding:8px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:background .15s;}
+#btn-new:hover{background:#1D4ED8;}
+#sb-filter{padding:8px 12px 4px;display:flex;flex-direction:column;gap:3px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sf-btn{background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:10px;font-family:inherit;text-align:left;transition:all .12s;}
+.sf-btn:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);}
+.sf-btn.on{border-color:transparent;color:#fff;font-weight:700;}
+#sb-list{flex:1;overflow-y:auto;padding:6px 0;}
+#sb-list::-webkit-scrollbar{width:3px;}
+#sb-list::-webkit-scrollbar-thumb{background:#334155;}
+.si{padding:8px 12px;cursor:pointer;border-left:3px solid transparent;transition:all .12s;}
+.si:hover{background:rgba(255,255,255,.05);}
+.si.on{background:rgba(37,99,235,.2);border-left-color:#3B82F6;}
+.si-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:2px;}
+.si-co{color:#F1F5F9;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.si-name{color:#94A3B8;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.si-row{display:flex;align-items:center;gap:4px;margin-top:3px;}
+.si-pb{flex:1;background:rgba(255,255,255,.1);border-radius:2px;height:3px;overflow:hidden;}
+.si-pf{height:100%;border-radius:2px;transition:width .3s;}
+.si-pct{color:#94A3B8;font-size:9px;min-width:24px;text-align:right;}
+
+/* メイン */
+#main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+/* ダッシュボード */
+#vd{flex:1;overflow-y:auto;padding:18px 20px;}
+#vd::-webkit-scrollbar{width:5px;}
+#vd::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px;}
+.vd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.vd-head h2{font-size:16px;font-weight:700;color:#0F172A;}
+.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+.sm{background:#fff;border-radius:8px;padding:10px 14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
+.sm-n{font-size:22px;font-weight:700;}
+.sm-l{font-size:10px;color:#64748B;margin-top:2px;}
+.status-filters{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.stf{padding:5px 12px;border-radius:16px;border:2px solid transparent;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:4px;}
+.stf.off{background:#fff!important;color:#64748B!important;border-color:#E2E8F0!important;}
+.stf-cnt{background:rgba(0,0,0,.12);border-radius:8px;padding:1px 6px;font-size:10px;}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
+.dc{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.dc:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.12);}
+.dc-head{display:flex;align-items:flex-start;gap:7px;margin-bottom:8px;}
+.dc-ico{font-size:20px;line-height:1;}
+.dc-inf{flex:1;min-width:0;}
+.dc-co{font-weight:700;color:#0F172A;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dc-sub{font-size:10px;color:#64748B;margin-top:1px;}
+.dc-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.dc-proc{font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px;}
+.dc-pct{font-size:18px;font-weight:700;}
+.st-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-bottom:6px;}
+.dc-bar{background:#E2E8F0;border-radius:3px;height:5px;overflow:hidden;margin-bottom:4px;}
+.dc-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.dc-bl{font-size:10px;color:#64748B;display:flex;justify-content:space-between;}
+
+/* 待ち中情報 */
+.waiting-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+.wchip{font-size:9px;padding:2px 7px;border-radius:4px;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;font-weight:600;}
+
+/* ステータスドロップダウン */
+.st-sel{width:100%;font-size:11px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;cursor:pointer;background:#F8FAFC;color:#475569;margin-top:8px;}
+
+/* アクション */
+.dc-acts{display:flex;gap:6px;margin-top:8px;}
+.dc-btn{flex:1;padding:5px;border-radius:5px;border:none;font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .12s;}
+.dc-open{background:#EFF6FF;color:#2563EB;}
+.dc-open:hover{background:#DBEAFE;}
+.dc-del{background:#FEF2F2;color:#DC2626;}
+.dc-del:hover{background:#FEE2E2;}
+
+/* チェックリスト */
+#vc{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#cl-head{background:#fff;padding:12px 18px;border-bottom:1px solid #E2E8F0;flex-shrink:0;}
+.cl-r1{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.cl-back{background:#F1F5F9;border:none;color:#475569;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;}
+.cl-back:hover{background:#E2E8F0;}
+.cl-co{font-size:15px;font-weight:700;color:#0F172A;}
+.cl-name{font-size:12px;color:#64748B;}
+.cl-pct{font-size:18px;font-weight:700;margin-left:auto;}
+.cl-bar{background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden;}
+.cl-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.cl-meta{display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap;}
+.cl-meta .label{font-size:11px;color:#64748B;}
+
+/* 待ち中パネル（チェックリスト上部） */
+#wait-panel{padding:10px 18px;background:#FFFBEB;border-bottom:2px solid #FDE68A;flex-shrink:0;}
+.wait-panel-title{font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px;}
+.wait-checks{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.wait-check{display:flex;align-items:center;gap:5px;font-size:11px;color:#78350F;cursor:pointer;}
+.wait-check input{accent-color:#D97706;width:13px;height:13px;}
+.wait-note{margin-top:8px;}
+.wait-note label{font-size:10px;color:#92400E;display:block;margin-bottom:3px;}
+.wait-note textarea{width:100%;font-size:11px;font-family:inherit;border:1px solid #FDE68A;border-radius:5px;padding:5px 8px;background:#FFFEF7;resize:vertical;min-height:36px;outline:none;color:#78350F;}
+
+/* 担当者 */
+#tantosha-panel{padding:8px 18px;background:#F0F9FF;border-bottom:1px solid #BAE6FD;flex-shrink:0;display:flex;align-items:center;gap:10px;}
+.tanto-label{font-size:11px;color:#0369A1;font-weight:600;white-space:nowrap;}
+.tanto-input{flex:1;max-width:200px;font-size:11px;font-family:inherit;border:1px solid #BAE6FD;border-radius:5px;padding:4px 8px;background:#fff;outline:none;color:#0369A1;}
+.tanto-hist{font-size:10px;color:#64748B;flex:1;}
+.tanto-hist span{background:#E0F2FE;color:#0369A1;padding:2px 7px;border-radius:4px;margin-right:4px;font-weight:600;}
+
+/* チェックリスト本体 */
+#cl-body{flex:1;overflow-y:auto;padding:10px 16px 20px;}
+#cl-body::-webkit-scrollbar{width:5px;}
+#cl-body::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px;}
+.sec-head{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:0 6px 6px 0;margin:8px 0 4px;}
+.sec-title{font-weight:700;font-size:12px;}
+.sec-cnt{margin-left:auto;font-size:10px;color:#64748B;font-weight:600;}
+.task-card{background:#fff;border:1px solid #E2E8F0;border-radius:7px;margin-bottom:3px;overflow:hidden;transition:border-color .15s,background .15s;}
+.task-card.done{background:#F0FDF4;border-color:#86EFAC;}
+.task-row{display:flex;align-items:flex-start;padding:8px 10px;gap:7px;}
+.task-num{min-width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.task-cb{margin-top:2px;width:14px;height:14px;cursor:pointer;flex-shrink:0;}
+.task-info{flex:1;}
+.task-label{color:#1E293B;font-weight:500;font-size:12px;line-height:1.4;}
+.task-label.done{color:#166534;text-decoration:line-through;}
+.task-warn{margin-top:3px;padding:3px 7px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:3px;font-size:10px;color:#C2410C;line-height:1.5;}
+.task-toggle{background:none;border:none;color:#94A3B8;font-size:12px;cursor:pointer;padding:0 3px;flex-shrink:0;}
+.task-toggle:hover{color:#475569;}
+.task-note{padding:5px 10px 7px 47px;background:#F8FAFC;border-top:1px solid #E2E8F0;font-size:11px;color:#475569;line-height:1.6;}
+.empty-state{text-align:center;padding:60px 20px;color:#94A3B8;}
+.empty-icon{font-size:40px;margin-bottom:12px;}
+.empty-text{font-size:14px;font-weight:700;color:#475569;margin-bottom:6px;}
+
+/* モーダル */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px;}
+.ov.hidden{display:none;}
+.mbox{background:#fff;border-radius:12px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;}
+.mt{font-size:15px;font-weight:700;color:#0F172A;margin-bottom:16px;}
+.fg{margin-bottom:12px;}
+.fl{font-size:11px;color:#64748B;display:block;margin-bottom:3px;font-weight:600;}
+.fi{width:100%;padding:7px 10px;border:1px solid #CBD5E1;border-radius:6px;font-size:12px;font-family:inherit;outline:none;transition:border-color .15s;}
+.fi:focus{border-color:#2563EB;box-shadow:0 0 0 2px rgba(37,99,246,.12);}
+.req{color:#DC2626;}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;}
+.po{padding:7px 9px;border:2px solid #E2E8F0;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;background:#fff;font-family:inherit;font-size:11px;font-weight:500;color:#475569;transition:all .12s;text-align:left;}
+.po:hover{border-color:#CBD5E1;background:#F8FAFC;}
+.mbtns{display:flex;gap:8px;margin-top:16px;}
+.bcn{flex:1;padding:8px;border:1px solid #CBD5E1;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;font-family:inherit;}
+.bcn:hover{background:#F8FAFC;}
+.bsb{flex:1;padding:8px;border:none;border-radius:6px;background:#2563EB;color:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;}
+.bsb:hover{background:#1D4ED8;}
+.bsb:disabled{background:#CBD5E1;cursor:default;}
+
+/* 用語集 */
+.gl-box{max-height:70vh;overflow-y:auto;}
+.gl-head{display:flex;align-items:center;margin-bottom:14px;}
+.gl-head h3{flex:1;font-size:15px;font-weight:700;}
+.gl-x{background:none;border:none;font-size:18px;cursor:pointer;color:#94A3B8;}
+.gl-item{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #F1F5F9;}
+.gl-item:last-child{border:none;}
+.gl-term{font-weight:700;font-size:12px;color:#1E293B;margin-bottom:2px;}
+.gl-def{font-size:11px;color:#64748B;line-height:1.6;}
+
+/* トースト */
+.toast{position:fixed;bottom:24px;right:24px;z-index:999;background:#0F172A;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);transform:translateY(20px);opacity:0;transition:all .3s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* レスポンシブ */
+@media(max-width:800px){
+  #sb{display:none;}
+  .summary{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div id="nav">
+  <div class="brand">⚖️ SR Office</div>
+  <div class="ntab on" id="tab-cl" onclick="showView('d')">📁 手続きチェックリスト</div>
+  <div class="ntab" id="tab-gl" onclick="openModal('ov-gl')">📖 用語集</div>
+  <div id="sync-status" class="sync">🔄 接続中...</div>
+</div>
+
+<div id="app">
+  <!-- サイドバー -->
+  <div id="sb">
+    <div id="sb-top">
+      <button id="btn-new" onclick="openModal('ov-new')">＋ 新規案件</button>
+    </div>
+    <div id="sb-filter">
+      <button class="sf-btn on" id="sf-all" onclick="setSbFilter('all')">すべて</button>
+      <button class="sf-btn" id="sf-none" onclick="setSbFilter('none')" style="border-left:3px solid #6B7280;">未手続</button>
+      <button class="sf-btn" id="sf-wait" onclick="setSbFilter('wait')" style="border-left:3px solid #D97706;">待ち中</button>
+      <button class="sf-btn" id="sf-apply" onclick="setSbFilter('apply')" style="border-left:3px solid #D97706;">申請済</button>
+      <button class="sf-btn" id="sf-kobunsho" onclick="setSbFilter('kobunsho')" style="border-left:3px solid #7C3AED;">公文書待ち</button>
+      <button class="sf-btn" id="sf-done" onclick="setSbFilter('done')" style="border-left:3px solid #059669;">完了</button>
+    </div>
+    <div id="sb-list"></div>
+  </div>
+
+  <!-- メインエリア -->
+  <div id="main">
+    <!-- ダッシュボード -->
+    <div id="vd">
+      <div class="vd-head">
+        <h2>📋 手続き案件一覧</h2>
+        <button class="bcn" style="padding:5px 14px;font-size:11px;border-radius:6px;" onclick="openModal('ov-new')">＋ 新規案件</button>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="status-filters" id="status-filters"></div>
+      <div id="dash-content"></div>
+    </div>
+
+    <!-- チェックリスト -->
+    <div id="vc" style="display:none;">
+      <div id="cl-head">
+        <div class="cl-r1">
+          <button class="cl-back" onclick="showView('d')">← 一覧へ</button>
+          <span id="cl-proc-badge"></span>
+          <span class="cl-co" id="cl-co"></span>
+          <span class="cl-name" id="cl-name"></span>
+          <span class="cl-pct" id="cl-pct"></span>
+        </div>
+        <div class="cl-bar"><div class="cl-bar-fill" id="cl-bar-fill"></div></div>
+        <div class="cl-meta">
+          <span class="label" id="cl-task-cnt"></span>
+          <span id="cl-st-badge"></span>
+          <span class="label">ステータス：</span>
+          <select class="st-sel" style="width:auto;padding:3px 8px;" id="cl-st-sel" onchange="setStatusFromCL(this.value)"></select>
+        </div>
+      </div>
+      <!-- 待ち中パネル -->
+      <div id="wait-panel" style="display:none;">
+        <div class="wait-panel-title">⏳ 待ち中の内容</div>
+        <div class="wait-checks" id="wait-checks"></div>
+        <div class="wait-note">
+          <label>メモ（何を待っているか具体的に）</label>
+          <textarea id="wait-memo" placeholder="例：○○様からの出勤簿が未着" oninput="saveWaitMemo(this.value)"></textarea>
+        </div>
+      </div>
+      <!-- 担当者パネル -->
+      <div id="tantosha-panel">
+        <span class="tanto-label">今日の担当：</span>
+        <input class="tanto-input" id="tanto-input" type="text" placeholder="氏名を入力" onkeydown="if(event.key==='Enter')saveTanto()">
+        <button style="background:#0EA5E9;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;" onclick="saveTanto()">記録</button>
+        <span class="tanto-hist" id="tanto-hist"></span>
+      </div>
+      <!-- チェックリスト本体 -->
+      <div id="cl-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 新規案件モーダル -->
+<div class="ov hidden" id="ov-new">
+  <div class="mbox">
+    <div class="mt">＋ 新規案件</div>
+    <div class="fg">
+      <label class="fl">事業所名 <span class="req">*</span></label>
+      <input class="fi" id="n-co" type="text" placeholder="〇〇株式会社" oninput="uNewBtn()">
+    </div>
+    <div class="fg">
+      <label class="fl">対象者氏名</label>
+      <input class="fi" id="n-na" type="text" placeholder="山田 太郎（任意）">
+    </div>
+    <div class="fg">
+      <label class="fl">手続き種別 <span class="req">*</span></label>
+      <div class="pg" id="proc-grid"></div>
+    </div>
+    <div class="mbtns">
+      <button class="bcn" onclick="closeModal('ov-new')">キャンセル</button>
+      <button class="bsb" id="n-submit" disabled onclick="createCase()">作成する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 用語集モーダル -->
+<div class="ov hidden" id="ov-gl">
+  <div class="mbox" style="max-width:500px;">
+    <div class="gl-head">
+      <h3>📖 用語集</h3>
+      <button class="gl-x" onclick="closeModal('ov-gl')">×</button>
+    </div>
+    <div class="gl-box" id="gl-content"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// Supabase設定
+// ============================================================
+const SB_URL = 'https://mmcgxgzplvtenlyzxhty.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tY2d4Z3pwbHZ0ZW5seXp4aHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODAwMTMsImV4cCI6MjA4OTM1NjAxM30.0qaVx5ymqB63YJ7rHQe0I56sqp3M8CVv4ZwRVmhjHWU';
+const TABLE = 'checklist_cases';
+
+const SB_HEADERS = {
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Content-Type': 'application/json'
+};
+
+async function sbGet() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?select=*&order=created_at.asc`, { headers: SB_HEADERS });
+    if (!r.ok) { const t = await r.text(); throw new Error(t); }
+    return await r.json();
+  } catch(e) { console.error('sbGet', e); return null; }
+}
+
+async function sbInsert(row) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+      body: JSON.stringify(row)
+    });
+    if (!r.ok) { const t = await r.text(); throw new Error(t); }
+    return (await r.json())[0];
+  } catch(e) { console.error('sbInsert', e); return null; }
+}
+
+async function sbUpdate(id, data) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) { const t = await r.text(); throw new Error(t); }
+    return true;
+  } catch(e) { console.error('sbUpdate', e); return false; }
+}
+
+async function sbDelete(id) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+      method: 'DELETE', headers: SB_HEADERS
+    });
+    return r.ok;
+  } catch(e) { console.error('sbDelete', e); return false; }
+}
+
+// ============================================================
+// ステータス定義
+// ============================================================
+const STATUSES = [
+  { key: 'none',     label: '未手続',     color: '#6B7280', bg: '#F3F4F6' },
+  { key: 'wait',     label: '待ち中',     color: '#D97706', bg: '#FFFBEB' },
+  { key: 'apply',    label: '申請済',     color: '#D97706', bg: '#FFFBEB' },
+  { key: 'kobunsho', label: '公文書待ち', color: '#7C3AED', bg: '#F5F3FF' },
+  { key: 'done',     label: '完了',       color: '#059669', bg: '#F0FDF4' },
+];
+const WAIT_ITEMS = [
+  { key: 'docs',    label: '添付書類・情報待ち' },
+  { key: 'kintai',  label: '出勤簿待ち' },
+  { key: 'chingin', label: '賃金台帳待ち' },
+  { key: 'other',   label: 'その他' },
+];
+function stInfo(k) { return STATUSES.find(s => s.key === k) || STATUSES[0]; }
+
+// ============================================================
+// 手続きデータ定義
+// ============================================================
+const PROC_KEYS = ["入社","退職","同日得喪","扶養","氏名変更","住所変更","傷病手当","月変・賃金入力","賞与支払届","36協定","労災","療養費","限度額","70歳","保険証再交付","事業所成立","事業所廃止","所在地変更","名称変更","代表者変更","海外労災","就業規則届","一人親方"];
+
+const P = {
+"入社":{color:"#2563EB",icon:"👤",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"n1",label:"お客様へ入社連絡票受領の連絡",note:"入社連絡票が届いたことをお客様にメール・電話で確認します。",warn:null},
+    {id:"n2",label:"入社連絡票のドキュ",note:"受領した入社連絡票をドキュサインでスキャン・保存します。",warn:null},
+    {id:"n3",label:"ドキュの名前の変更",note:"ファイル名を「会社名_氏名_入社連絡票_日付」に統一します。",warn:null},
+    {id:"n4",label:"入社連絡票の内容を確認",note:"記載漏れ・誤字がないか確認します。",warn:"⚠️ PBMCは扶養者がいないかSmartHRで確認すること"},
+    {id:"n5",label:"個人マスタの入力",note:"ろうむinOneに個人情報を入力。社会保険非加入の場合は健保番号・厚年番号を消去してください。",warn:"⚠️ 会社名（所属先）を確認：こりすorクルミ・ショウ企画・ナインジー等"},
+    {id:"n6",label:"社会保険料控除表をメールで送る",note:"入力完了後、社会保険料控除表をお客様へメール送付します。",warn:null},
+  ]},
+  {title:"手続き",tasks:[
+    {id:"n7",label:"雇用保険資格取得手続き",note:"e-GovまたはろうむinOneで提出します。",warn:"⚠️ 入社後取得の場合は個マスタの労保画面に✓を入れること"},
+    {id:"n8",label:"社会保険資格取得手続き",note:"健保組合の場合は健保・厚年それぞれ提出します。70歳以上は別途確認。",warn:"⚠️ 70歳以上該当者は別手続きが必要"},
+    {id:"n9",label:"被扶養者手続き",note:"扶養家族がいる場合は被扶養者異動届を提出します。",warn:"⚠️ 個マスタへの登録も忘れずに。紙提出の場合は特に注意"},
+    {id:"n10",label:"3号手続き",note:"健保組合の場合のみ実施。第3号被保険者届を提出します。",warn:null},
+    {id:"n11",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理・保存します。",warn:null},
+  ]},
+  {title:"公文書取得・整理",tasks:[
+    {id:"n12",label:"雇用保険公文書取得",note:"電子申請ならe-Govから、紙ならハローワークから受領します。",warn:null},
+    {id:"n13",label:"雇用保険公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"n14",label:"社会保険公文書取得",note:"健保組合の場合は健保・厚年それぞれ取得します。",warn:null},
+    {id:"n15",label:"社会保険公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"n16",label:"被扶養者公文書取得",note:"扶養手続きがあった場合のみ実施します。",warn:null},
+    {id:"n17",label:"被扶養者公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"n18",label:"第３号公文書取得",note:"健保組合はけんぽ協会から、その他はe-Govから取得します。",warn:null},
+    {id:"n19",label:"第３号公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"n20",label:"社会保険料控除表送付済みか確認",note:"手続き前にメールが届いているか確認します。",warn:null},
+    {id:"n21",label:"入社ドキュを整理する",note:"すべての書類が揃っているか確認してフォルダを整理します。",warn:null},
+  ]},
+  {title:"公文書の送付",tasks:[
+    {id:"n22",label:"雇用保険公文書の送付",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"n23",label:"社会保険公文書の送付",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"n24",label:"被扶養者公文書の送付",note:"扶養手続きがあった場合のみ送付します。",warn:null},
+    {id:"n25",label:"雇用保険事務処理簿の送付",note:"事務組合のみ送付が必要です。",warn:"⚠️ 事務組合のみ実施"},
+    {id:"n26",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"退職":{color:"#DC2626",icon:"🚪",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"t1",label:"お客様へ退職連絡票受領の連絡",note:"退職連絡票が届いたことをお客様に確認します。",warn:null},
+    {id:"t2",label:"時給者・日給者の場合は出勤簿を依頼",note:"原則、退職日から遡る13か月分の出勤簿を依頼します。",warn:"⚠️ 離職票が急ぎの場合は賃金台帳も依頼すること"},
+    {id:"t3",label:"退職理由に応じて必要な添付書類を依頼",note:"契約期間満了の場合：最後の契約書（雇止め明示があるときは最終を含む直近2回分）",warn:null},
+    {id:"t4",label:"退職連絡票のドキュ",note:"受領した退職連絡票をドキュに保存します。",warn:null},
+    {id:"t5",label:"ドキュの名前の変更",note:"ファイル名を「会社名_氏名_退職連絡票_日付」に統一します。",warn:null},
+    {id:"t6",label:"退職連絡票の内容を確認",note:"退職日・退職理由・給与支払情報等を確認します。",warn:null},
+    {id:"t7",label:"個人マスタに退職内容を入力",note:"ろうむinOneの個人マスタに退職日・退職理由を入力します。",warn:null},
+    {id:"t8",label:"健康保険資格喪失証明書と退職後の健康保険のお知らせを送る",note:"退職後の健康保険（任意継続・国民健康保険等）について案内します。",warn:null},
+    {id:"t9",label:"保険証回収の依頼",note:"健康保険証の返却をお客様経由で本人に依頼します。",warn:null},
+  ]},
+  {title:"退職手続き",tasks:[
+    {id:"t10",label:"雇用保険喪失手続き or 離職票発行手続き",note:"ショウ企画は退職時の所属を確認し、違っていたら転勤届を出すこと。",warn:"⚠️ 退職でないのに喪失した場合、個マスタ労保画面の✓を外すこと"},
+    {id:"t11",label:"社会保険資格喪失手続き",note:"健保組合の場合は健保・厚年それぞれ提出します。",warn:null},
+    {id:"t12",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理・保存します。",warn:null},
+  ]},
+  {title:"公文書取得・整理",tasks:[
+    {id:"t13",label:"離職票or雇喪確認通知書 公文書取得",note:"e-Govまたはハローワークから取得します。",warn:null},
+    {id:"t14",label:"離職票or雇喪認通知書 公文書ドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"t15",label:"社会保険公文書取得",note:"健保組合の場合は健保・厚年それぞれ取得します。",warn:null},
+    {id:"t16",label:"社会保険公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"t17",label:"退職ドキュを整理する",note:"すべての書類が揃っているか確認してフォルダを整理します。",warn:null},
+  ]},
+  {title:"公文書の送付",tasks:[
+    {id:"t18",label:"離職票or雇喪認通知書 公文書の送付",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"t19",label:"社会保険公文書の送付orアップ",note:"健保組合の場合は健保・厚年それぞれ送付します。",warn:null},
+    {id:"t20",label:"雇用保険事務処理簿の送付",note:"事務組合のみ送付が必要です。",warn:"⚠️ 事務組合のみ実施"},
+    {id:"t21",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"同日得喪":{color:"#7C3AED",icon:"🔄",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"d1",label:"お客様へ連絡票受領の連絡",note:"同日得喪の連絡票が届いたことをお客様に確認します。",warn:null},
+    {id:"d2",label:"連絡票のドキュ",note:"受領した連絡票をドキュに保存します。",warn:null},
+    {id:"d3",label:"ドキュの名前の変更",note:"ファイル名を「会社名_氏名_同日得喪_日付」に統一します。",warn:null},
+    {id:"d4",label:"連絡票の内容を確認",note:"取得・喪失日、標準報酬月額等を確認します。",warn:null},
+    {id:"d5",label:"個人マスタの更新",note:"ろうむinOneで個人情報を更新します。",warn:null},
+    {id:"d6",label:"社会保険料控除表をメールで送る",note:"更新後、社会保険料控除表をお客様へメール送付します。",warn:null},
+  ]},
+  {title:"喪失手続き",tasks:[
+    {id:"d7",label:"社会保険資格喪失手続き",note:"健保組合の場合は健保・厚年それぞれ提出します。",warn:null},
+    {id:"d8",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+  ]},
+  {title:"取得手続き",tasks:[
+    {id:"d9",label:"社会保険資格取得手続き",note:"健保組合の場合は健保・厚年それぞれ提出。70歳以上・添付書類を確認。",warn:"⚠️ 添付書類の確認を忘れずに"},
+    {id:"d10",label:"被扶養者手続き",note:"扶養家族がいる場合は被扶養者異動届を提出します。",warn:"⚠️ 個マスタへの登録も忘れずに"},
+    {id:"d11",label:"3号手続き",note:"健保組合の場合のみ実施します。",warn:null},
+    {id:"d12",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+  ]},
+  {title:"公文書取得・整理",tasks:[
+    {id:"d13",label:"社会保険公文書取得（喪失分）",note:"健保組合の場合は健保・厚年それぞれ取得します。",warn:null},
+    {id:"d14",label:"社会保険公文書取得（取得分）",note:"健保組合の場合は健保・厚年それぞれ取得します。",warn:null},
+    {id:"d15",label:"被扶養者公文書取得",note:"扶養手続きがあった場合のみ実施します。",warn:null},
+    {id:"d16",label:"公文書のドキュ",note:"すべての公文書をドキュに保存します。",warn:null},
+    {id:"d17",label:"同日得喪ドキュを整理する",note:"すべての書類が揃っているか確認してフォルダを整理します。",warn:null},
+  ]},
+  {title:"公文書の送付",tasks:[
+    {id:"d18",label:"社会保険公文書の送付（喪失分）",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"d19",label:"社会保険公文書の送付（取得分）",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"d20",label:"社会保険料控除表の確認",note:"変更後の控除表をお客様へ再送付します。",warn:null},
+    {id:"d21",label:"雇用保険事務処理簿の送付",note:"事務組合のみ送付が必要です。",warn:"⚠️ 事務組合のみ実施"},
+    {id:"d22",label:"被扶養者公文書の送付",note:"扶養手続きがあった場合のみ送付します。",warn:null},
+    {id:"d23",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"扶養":{color:"#0891B2",icon:"👨‍👩‍👧",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"f1",label:"お客様へ扶養変更連絡票受領の連絡",note:"扶養変更の連絡票が届いたことをお客様に確認します。",warn:null},
+    {id:"f2",label:"連絡票のドキュ",note:"受領した連絡票をドキュに保存します。",warn:null},
+    {id:"f3",label:"ドキュの名前の変更",note:"ファイル名を「会社名_氏名_扶養変更_日付」に統一します。",warn:null},
+    {id:"f4",label:"連絡票の内容を確認",note:"扶養追加・削除、扶養対象者の情報を確認します。",warn:"⚠️ 収入証明書等の添付書類が必要な場合あり"},
+    {id:"f5",label:"個人マスタの更新",note:"ろうむinOneで扶養情報を更新します。",warn:"⚠️ 個マスタへの登録も忘れずに"},
+    {id:"f6",label:"添付書類の確認",note:"収入証明・続柄証明等の必要書類を確認します。",warn:null},
+    {id:"f7",label:"社会保険料控除表をメールで送る",note:"更新後、社会保険料控除表をお客様へメール送付します。",warn:null},
+  ]},
+  {title:"扶養手続き",tasks:[
+    {id:"f8",label:"被扶養者手続き",note:"電子申請時、被保険者の収入入力を忘れずに。1,000万円以上は9,999,999と入力。",warn:"⚠️ 個マスタへの登録も忘れずに。紙提出の場合は特に注意"},
+    {id:"f9",label:"3号手続き",note:"健保組合の場合のみ実施します。",warn:null},
+    {id:"f10",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+  ]},
+  {title:"公文書取得・整理",tasks:[
+    {id:"f11",label:"社会保険公文書取得",note:"健保組合の場合は健保・厚年それぞれ取得します。",warn:null},
+    {id:"f12",label:"公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"f13",label:"第3号公文書取得",note:"健保組合の場合はけんぽ協会から取得します。",warn:null},
+    {id:"f14",label:"第3号公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"f15",label:"扶養ドキュを整理する",note:"すべての書類が揃っているか確認してフォルダを整理します。",warn:null},
+  ]},
+  {title:"公文書の送付",tasks:[
+    {id:"f16",label:"社会保険公文書の送付",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"f17",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"氏名変更":{color:"#059669",icon:"✏️",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"s1",label:"お客様へ氏名変更連絡票受領の連絡",note:"マイナ保険証と紐付け済みなら手続き不要。扶養者は届出が必要です。",warn:null},
+    {id:"s2",label:"連絡票のドキュ",note:"受領した連絡票をドキュに保存します。",warn:null},
+    {id:"s3",label:"ドキュの名前の変更",note:"ファイル名を「会社名_旧氏名→新氏名_氏名変更_日付」に統一します。",warn:null},
+    {id:"s4",label:"連絡票の内容を確認",note:"旧氏名・新氏名・変更日を確認します。",warn:null},
+    {id:"s5",label:"ろうむinOneで新氏名を更新",note:"社会保険氏名変更手続き画面で新しい氏名に変更します。",warn:null},
+    {id:"s6",label:"保険証回収依頼しない",note:"手続き後「資格確認書が届かない」と連絡が来たら申請して保険証を回収。",warn:null},
+  ]},
+  {title:"氏名変更手続き",tasks:[
+    {id:"s7",label:"雇用保険被保険者氏名変更届",note:"ハローワークへ提出します。e-Govでも可。",warn:null},
+    {id:"s8",label:"社会保険氏名変更届",note:"健保組合の場合は健保・厚年それぞれ提出します。",warn:null},
+    {id:"s9",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+  ]},
+  {title:"公文書取得・送付",tasks:[
+    {id:"s10",label:"雇用保険公文書取得",note:"e-Govまたはハローワークから受領します。",warn:null},
+    {id:"s11",label:"社会保険公文書取得",note:"健保組合の場合は健保・厚年それぞれ取得します。",warn:null},
+    {id:"s12",label:"公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"s13",label:"公文書の送付",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"s14",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"住所変更":{color:"#0891B2",icon:"🏠",sections:[
+  {title:"手続き",tasks:[
+    {id:"ad1",label:"お客様へ住所変更連絡票受領の連絡",note:"住所変更の連絡票が届いたことをお客様に確認します。",warn:null},
+    {id:"ad2",label:"個人マスタの住所を更新",note:"ろうむinOneで新住所に更新します。",warn:null},
+    {id:"ad3",label:"雇用保険 住所変更届（必要な場合）",note:"マイナ保険証連携済みの場合は不要です。",warn:null},
+    {id:"ad4",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"ad5",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"傷病手当":{color:"#BE185D",icon:"🏥",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"sh1",label:"傷病手当金申請書の準備",note:"協会けんぽまたは健保組合の申請書を準備します。",warn:null},
+    {id:"sh2",label:"申請対象期間の確認",note:"待期期間（3日）を含む欠勤期間を確認します。",warn:"⚠️ 有給消化日は支給対象外"},
+    {id:"sh3",label:"賃金台帳・出勤簿の収集",note:"申請期間の賃金台帳・出勤簿を収集します。",warn:null},
+  ]},
+  {title:"申請手続き",tasks:[
+    {id:"sh4",label:"事業主記載欄の記入",note:"会社の証明欄（給与支払状況等）を記入します。",warn:null},
+    {id:"sh5",label:"申請書の提出",note:"協会けんぽまたは健保組合へ提出します。",warn:null},
+    {id:"sh6",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+  ]},
+  {title:"公文書取得・送付",tasks:[
+    {id:"sh7",label:"支給決定通知書の取得",note:"協会けんぽまたは健保組合から受領します。",warn:null},
+    {id:"sh8",label:"公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"sh9",label:"公文書の送付",note:"お客様へ郵送またはドキュで送付します。",warn:null},
+    {id:"sh10",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"月変・賃金入力":{color:"#0369A1",icon:"💴",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"mc1",label:"賃金データの収集",note:"お客様から賃金変動データを収集します。",warn:null},
+    {id:"mc2",label:"月変対象者の確認",note:"3か月連続で2等級以上の変動がある者を確認します。",warn:"⚠️ 固定的賃金の変動が前提"},
+    {id:"mc3",label:"ろうむinOneで賃金入力",note:"対象者の賃金台帳入力を行います。",warn:null},
+  ]},
+  {title:"月変手続き",tasks:[
+    {id:"mc4",label:"月額変更届の作成",note:"ろうむinOneで月額変更届を作成します。",warn:null},
+    {id:"mc5",label:"月額変更届の提出",note:"年金事務所または健保組合へ提出します。",warn:null},
+    {id:"mc6",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+  ]},
+  {title:"公文書取得・送付",tasks:[
+    {id:"mc7",label:"社会保険料変更通知の取得",note:"年金事務所または健保組合から受領します。",warn:null},
+    {id:"mc8",label:"公文書のドキュ",note:"取得した公文書をドキュに保存します。",warn:null},
+    {id:"mc9",label:"社会保険料控除表の更新・送付",note:"更新後の控除表をお客様へメール送付します。",warn:null},
+    {id:"mc10",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"賞与支払届":{color:"#B45309",icon:"🎁",sections:[
+  {title:"手続き",tasks:[
+    {id:"by1",label:"賞与支払データの収集",note:"お客様から賞与支払データを収集します。",warn:null},
+    {id:"by2",label:"ろうむinOneで賞与入力",note:"対象者の賞与額を入力します。",warn:"⚠️ 支払日から5日以内に提出が必要"},
+    {id:"by3",label:"賞与支払届の作成",note:"ろうむinOneで賞与支払届を作成します。",warn:null},
+    {id:"by4",label:"賞与支払届の提出",note:"年金事務所または健保組合へ提出します。",warn:null},
+    {id:"by5",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"by6",label:"公文書取得・ドキュ",note:"標準賞与額通知書等を取得しドキュに保存します。",warn:null},
+    {id:"by7",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"36協定":{color:"#7C3AED",icon:"📝",sections:[
+  {title:"手続き",tasks:[
+    {id:"36a1",label:"36協定届の準備",note:"労使協定を締結後、届出書を準備します。",warn:null},
+    {id:"36a2",label:"内容確認（時間外・休日労働の上限確認）",note:"月45時間・年360時間の原則と特別条項を確認します。",warn:"⚠️ 特別条項の場合は月100時間・年720時間上限"},
+    {id:"36a3",label:"36協定届の提出",note:"労働基準監督署またはe-Govで提出します。",warn:null},
+    {id:"36a4",label:"受付印済み書類の受領",note:"受付印済みの協定届を受領します。",warn:null},
+    {id:"36a5",label:"ドキュ整理・お客様への送付",note:"受付印済み書類をドキュに保存し、お客様へ送付します。",warn:null},
+    {id:"36a6",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"労災":{color:"#DC2626",icon:"🦺",sections:[
+  {title:"手続き",tasks:[
+    {id:"lc1",label:"労災発生状況の確認",note:"発生日時・場所・状況を確認します。",warn:"⚠️ 業務災害か通勤災害かを確認すること"},
+    {id:"lc2",label:"療養補償給付（様式第5号）の準備",note:"業務災害の場合は様式第5号を準備します。",warn:null},
+    {id:"lc3",label:"事業主の証明記入",note:"事業主証明欄を記入します。",warn:null},
+    {id:"lc4",label:"労基署への提出または医療機関への交付",note:"医療機関への交付または労基署へ提出します。",warn:null},
+    {id:"lc5",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"lc6",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"療養費":{color:"#BE185D",icon:"💊",sections:[
+  {title:"手続き",tasks:[
+    {id:"ry1",label:"療養費申請書の準備",note:"協会けんぽまたは健保組合の申請書を準備します。",warn:null},
+    {id:"ry2",label:"領収書・診療明細書の確認",note:"対象の領収書・診療明細書を確認します。",warn:null},
+    {id:"ry3",label:"申請書の提出",note:"協会けんぽまたは健保組合へ提出します。",warn:null},
+    {id:"ry4",label:"公文書取得・ドキュ",note:"支給決定通知書等を取得しドキュに保存します。",warn:null},
+    {id:"ry5",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"限度額":{color:"#0891B2",icon:"🏷️",sections:[
+  {title:"手続き",tasks:[
+    {id:"gd1",label:"限度額適用認定申請書の準備",note:"協会けんぽまたは健保組合の申請書を準備します。",warn:null},
+    {id:"gd2",label:"申請書の提出",note:"協会けんぽまたは健保組合へ提出します（郵送可）。",warn:null},
+    {id:"gd3",label:"限度額適用認定証の受領",note:"認定証が届いたらお客様へ転送します。",warn:null},
+    {id:"gd4",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"70歳":{color:"#D97706",icon:"🧓",sections:[
+  {title:"手続き",tasks:[
+    {id:"70a1",label:"70歳到達者の確認",note:"70歳到達日（誕生日の前日）を確認します。",warn:"⚠️ 厚生年金保険資格喪失・健保は継続"},
+    {id:"70a2",label:"70歳到達時の届出準備",note:"厚生年金保険70歳以上被用者該当届を準備します。",warn:null},
+    {id:"70a3",label:"届出の提出",note:"年金事務所へ提出します。",warn:null},
+    {id:"70a4",label:"社会保険料控除表の更新・送付",note:"厚生年金料が変わるため控除表を更新しお客様へ送付します。",warn:null},
+    {id:"70a5",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"保険証再交付":{color:"#059669",icon:"💳",sections:[
+  {title:"手続き",tasks:[
+    {id:"hk1",label:"再交付申請書の準備",note:"協会けんぽまたは健保組合の申請書を準備します。",warn:null},
+    {id:"hk2",label:"申請書の提出",note:"協会けんぽまたは健保組合へ提出します。",warn:null},
+    {id:"hk3",label:"保険証の受領・お客様への送付",note:"保険証が届いたらお客様へ送付します。",warn:null},
+    {id:"hk4",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"事業所成立":{color:"#0369A1",icon:"🏢",sections:[
+  {title:"手続き",tasks:[
+    {id:"es1",label:"事業所情報の収集",note:"事業所名称・所在地・設立年月日・業種等を確認します。",warn:null},
+    {id:"es2",label:"雇用保険適用事業所設置届",note:"ハローワークへ提出します（設置日の翌日から10日以内）。",warn:"⚠️ 翌日から10日以内"},
+    {id:"es3",label:"労働保険関係成立届",note:"労働基準監督署へ提出します。",warn:null},
+    {id:"es4",label:"社会保険新規適用届",note:"年金事務所へ提出します。",warn:null},
+    {id:"es5",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"es6",label:"公文書取得・お客様への送付",note:"各公文書を取得しお客様へ送付します。",warn:null},
+    {id:"es7",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"事業所廃止":{color:"#DC2626",icon:"🏚️",sections:[
+  {title:"手続き",tasks:[
+    {id:"ec1",label:"廃止日・最終雇用者の確認",note:"廃止日と在籍従業員を確認します。",warn:null},
+    {id:"ec2",label:"雇用保険廃止届",note:"ハローワークへ提出します。",warn:null},
+    {id:"ec3",label:"労働保険確定申告・廃止",note:"労働基準監督署へ提出します。",warn:null},
+    {id:"ec4",label:"社会保険全喪届",note:"年金事務所へ提出します。",warn:null},
+    {id:"ec5",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"ec6",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"所在地変更":{color:"#0891B2",icon:"📍",sections:[
+  {title:"手続き",tasks:[
+    {id:"ad1b",label:"変更日・新住所の確認",note:"変更年月日と新所在地を確認します。",warn:null},
+    {id:"ad2b",label:"雇用保険事業所所在地変更届",note:"ハローワークへ提出します。",warn:null},
+    {id:"ad3b",label:"社会保険適用事業所名称/所在地変更（訂正）届",note:"年金事務所へ提出します。",warn:null},
+    {id:"ad4b",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"ad5b",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"名称変更":{color:"#059669",icon:"🏷️",sections:[
+  {title:"手続き",tasks:[
+    {id:"nm1",label:"変更日・新名称の確認",note:"変更年月日と新名称を確認します。",warn:null},
+    {id:"nm2",label:"雇用保険事業所名称変更届",note:"ハローワークへ提出します。",warn:null},
+    {id:"nm3",label:"社会保険名称変更届",note:"年金事務所へ提出します。",warn:null},
+    {id:"nm4",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"nm5",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"代表者変更":{color:"#7C3AED",icon:"👑",sections:[
+  {title:"手続き",tasks:[
+    {id:"rp1",label:"変更日・新代表者情報の確認",note:"変更年月日と新代表者の氏名・生年月日等を確認します。",warn:null},
+    {id:"rp2",label:"社会保険代表者変更届",note:"年金事務所へ提出します（代表者が被保険者の場合）。",warn:null},
+    {id:"rp3",label:"雇用保険関係の確認",note:"代表者交代に伴う雇用保険手続きを確認します。",warn:null},
+    {id:"rp4",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"rp5",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"海外労災":{color:"#DC2626",icon:"✈️",sections:[
+  {title:"手続き",tasks:[
+    {id:"kl1",label:"海外派遣者の確認",note:"海外特別加入者かどうかを確認します。",warn:"⚠️ 海外特別加入していない場合は適用外"},
+    {id:"kl2",label:"療養補償給付申請書（海外用）の準備",note:"海外用の様式を準備します。",warn:null},
+    {id:"kl3",label:"申請書の提出",note:"本社管轄の労働基準監督署へ提出します。",warn:null},
+    {id:"kl4",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
+    {id:"kl5",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"就業規則届":{color:"#0369A1",icon:"📋",sections:[
+  {title:"手続き",tasks:[
+    {id:"jr1",label:"就業規則の内容確認",note:"常時10人以上の事業所は届出義務があります。",warn:"⚠️ 従業員代表の意見書が必要"},
+    {id:"jr2",label:"従業員代表の意見書の添付",note:"従業員代表から意見書に署名をもらいます。",warn:null},
+    {id:"jr3",label:"就業規則届の提出",note:"労働基準監督署へ提出します（2部：1部返却）。",warn:null},
+    {id:"jr4",label:"受付印済み書類の受領",note:"受付印済みの就業規則を受領します。",warn:null},
+    {id:"jr5",label:"ドキュ整理・お客様への送付",note:"受付印済み書類をドキュに保存し、お客様へ送付します。",warn:null},
+    {id:"jr6",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+"一人親方":{color:"#B45309",icon:"🔨",sections:[
+  {title:"手続き前にやること",tasks:[
+    {id:"hp1",label:"一人親方情報の収集",note:"氏名・生年月日・住所・業務内容等を収集します。",warn:null},
+    {id:"hp2",label:"特別加入の説明",note:"特別加入制度についてご説明します。",warn:null},
+    {id:"hp3",label:"特別加入申請書の準備",note:"SR経営労務センターの申請書を準備します。",warn:null},
+    {id:"hp4",label:"入会申込書の回収",note:"記入済みの入会申込書を回収します。",warn:null},
+    {id:"hp5",label:"入金確認（先生にお願いする）",note:"先生（担当者）に入金確認をお願いします。",warn:null},
+  ]},
+  {title:"手続き",tasks:[
+    {id:"hp6",label:"一人親方内訳明細をSRにFAXする",note:"SRへ一人親方の内訳明細をFAXします。",warn:null},
+    {id:"hp7",label:"一人親方名簿に入力",note:"一人親方名簿に情報を入力します。",warn:null},
+    {id:"hp8",label:"入会申込書をSRに郵送する",note:"入会申込書をSRへ郵送します。",warn:null},
+  ]},
+  {title:"公文書の送付",tasks:[
+    {id:"hp9",label:"一人親方カードを送付",note:"お客様へ一人親方カードを送付します。",warn:null},
+    {id:"hp10",label:"領収証を送付",note:"お客様へ領収証を送付します。",warn:null},
+    {id:"hp11",label:"一人親方名簿に整理番号を入力",note:"名簿に整理番号を入力して管理します。",warn:null},
+    {id:"hp12",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+  ]},
+]},
+};
+
+const GL = {
+  "ドキュ":"ドキュサイン（DocuSign）のこと。電子署名・文書管理クラウドサービスです。書類の保存・共有・電子署名に使用します。",
+  "個マスタ（個人マスタ）":"ろうむinOneで従業員個人の情報（氏名・住所・保険番号等）を管理する画面です。",
+  "ろうむinOne":"労務管理システム。社会保険・労働保険の手続きや給与計算を行うソフトウェアです。",
+  "月変":"月額変更届のこと。標準報酬月額が大幅に変動した際に提出する手続きです。",
+  "健保組合":"健康保険組合のこと。協会けんぽとは別に独自の健保組合がある場合に使用します。",
+  "e-Gov":"電子政府の総合窓口。社会保険・労働保険の電子申請に使用するシステムです。",
+  "公文書":"行政機関から発行される正式な書類。資格取得通知書・資格喪失通知書等のことです。",
+  "事務組合":"事業主の委託を受けて労働保険の事務処理を行う団体です。",
+  "SR":"SR経営労務センターのこと。特定の会社が加入している社会保険関係の組合です。",
+  "OD（OneDrive）":"Microsoftのクラウドストレージ。CSVファイル等の保存に使用します。",
+  "PBMC":"お客様企業名の略称のひとつ。SmartHRで扶養者情報を確認すること。",
+};
+
+// ============================================================
+// 状態管理
+// ============================================================
+let cases = [];          // [{id, company, name, proc, status, checks, waitFlags, waitMemo, tantoLog, created_at}]
+let currentId = null;
+let viewMode = 'd';      // 'd'=dashboard, 'c'=checklist
+let dashFilter = 'all';
+let sbFilter = 'all';
+let expanded = {};
+let selProc = null;
+let _lastSync = Date.now();
+
+function gp(c) { return P[c.proc] || P['入社']; }
+function allTasks(c) { return gp(c).sections.flatMap(s => s.tasks); }
+function pct(c) { const a = allTasks(c); return a.length ? Math.round(a.filter(t => c.checks[t.id]).length / a.length * 100) : 0; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function today() { return new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'}); }
+
+// ============================================================
+// Supabaseとの同期
+// ============================================================
+async function loadData() {
+  setSyncStatus('🔄 読み込み中...');
+  const rows = await sbGet();
+  if (rows === null) {
+    setSyncStatus('❌ 接続失敗（ローカルで動作中）');
+    // fallback to localStorage
+    const local = localStorage.getItem('cl-cases');
+    if (local) cases = JSON.parse(local);
+  } else {
+    cases = rows.map(r => ({
+      ...r,
+      checks: r.checks || {},
+      waitFlags: r.wait_flags || {},
+      waitMemo: r.wait_memo || '',
+      tantoLog: r.tanto_log || [],
+    }));
+    _lastSync = Date.now();
+    setSyncStatus('☁️ 同期済');
+  }
+  renderAll();
+}
+
+async function saveCase(c) {
+  localStorage.setItem('cl-cases', JSON.stringify(cases));
+  const payload = {
+    company: c.company,
+    name: c.name,
+    proc: c.proc,
+    status: c.status,
+    checks: c.checks,
+    wait_flags: c.waitFlags || {},
+    wait_memo: c.waitMemo || '',
+    tanto_log: c.tantoLog || [],
+    updated_at: new Date().toISOString(),
+  };
+  const ok = await sbUpdate(c.id, payload);
+  if (ok) { _lastSync = Date.now(); setSyncStatus('☁️ 保存済'); }
+  else setSyncStatus('⚠️ 保存失敗（ローカルのみ）');
+}
+
+async function insertCase(c) {
+  localStorage.setItem('cl-cases', JSON.stringify(cases));
+  const payload = {
+    company: c.company,
+    name: c.name,
+    proc: c.proc,
+    status: c.status || 'none',
+    checks: c.checks || {},
+    wait_flags: c.waitFlags || {},
+    wait_memo: c.waitMemo || '',
+    tanto_log: c.tantoLog || [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const row = await sbInsert(payload);
+  if (row) {
+    c.id = row.id;
+    _lastSync = Date.now();
+    setSyncStatus('☁️ 保存済');
+    return true;
+  }
+  setSyncStatus('⚠️ 保存失敗（ローカルのみ）');
+  return false;
+}
+
+async function removeCase(id) {
+  cases = cases.filter(c => c.id !== id);
+  localStorage.setItem('cl-cases', JSON.stringify(cases));
+  await sbDelete(id);
+  setSyncStatus('☁️ 削除済');
+}
+
+function setSyncStatus(msg) {
+  document.getElementById('sync-status').textContent = msg;
+}
+
+// 5分ごとに自動同期
+setInterval(async () => {
+  const rows = await sbGet();
+  if (rows) {
+    cases = rows.map(r => ({
+      ...r,
+      checks: r.checks || {},
+      waitFlags: r.wait_flags || {},
+      waitMemo: r.wait_memo || '',
+      tantoLog: r.tanto_log || [],
+    }));
+    _lastSync = Date.now();
+    setSyncStatus('☁️ 同期済（自動）');
+    renderAll();
+    if (currentId && viewMode === 'c') renderChecklist();
+  }
+}, 5 * 60 * 1000);
+
+// ============================================================
+// ビュー切替
+// ============================================================
+function showView(v) {
+  viewMode = v;
+  document.getElementById('vd').style.display = v === 'd' ? '' : 'none';
+  document.getElementById('vc').style.display = v === 'c' ? '' : 'none';
+  if (v === 'd') renderDash();
+  else renderChecklist();
+}
+
+function openChecklist(id) {
+  currentId = id;
+  expanded = {};
+  showView('c');
+  renderSidebar();
+}
+
+// ============================================================
+// サイドバー
+// ============================================================
+function setSbFilter(f) {
+  sbFilter = f;
+  ['all','none','wait','apply','kobunsho','done'].forEach(k => {
+    const el = document.getElementById('sf-'+k);
+    if (el) el.classList.toggle('on', k === f);
+  });
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const filtered = sbFilter === 'all' ? cases : cases.filter(c => (c.status||'none') === sbFilter);
+  const el = document.getElementById('sb-list');
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:12px;color:#64748B;font-size:10px;text-align:center;">該当する案件なし</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(c => {
+    const p = gp(c), pt = pct(c), st = stInfo(c.status||'none');
+    return `<div class="si${currentId===c.id&&viewMode==='c'?' on':''}" onclick="openChecklist('${c.id}')">
+      <span class="si-badge" style="background:${p.color}22;color:${p.color}">${p.icon} ${esc(c.proc)}</span>
+      <div class="si-co">${esc(c.company)}</div>
+      ${c.name ? `<div class="si-name">${esc(c.name)}</div>` : ''}
+      <div class="si-row">
+        <div class="si-pb"><div class="si-pf" style="width:${pt}%;background:${p.color}"></div></div>
+        <span class="si-pct">${pt}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// ダッシュボード
+// ============================================================
+function renderDash() {
+  const counts = {};
+  STATUSES.forEach(s => counts[s.key] = 0);
+  cases.forEach(c => { counts[c.status||'none'] = (counts[c.status||'none']||0)+1; });
+
+  // サマリ
+  document.getElementById('summary').innerHTML =
+    `<div class="sm" style="border-top:3px solid #1E293B"><div class="sm-n">${cases.length}</div><div class="sm-l">全案件</div></div>` +
+    STATUSES.map(s => `<div class="sm" style="border-top:3px solid ${s.color}">
+      <div class="sm-n" style="color:${s.color}">${counts[s.key]||0}</div>
+      <div class="sm-l">${s.label}</div>
+    </div>`).join('');
+
+  // フィルタボタン
+  document.getElementById('status-filters').innerHTML =
+    `<button class="stf${dashFilter==='all'?'':' off'}" style="background:#1E293B;color:#fff;border-color:#1E293B" onclick="setDashFilter('all')">すべて <span class="stf-cnt">${cases.length}</span></button>` +
+    STATUSES.map(s => `<button class="stf${dashFilter===s.key?'':' off'}" style="background:${s.bg};color:${s.color};border-color:${s.color}" onclick="setDashFilter('${s.key}')">${s.label} <span class="stf-cnt">${counts[s.key]||0}</span></button>`).join('');
+
+  // カード
+  const filtered = dashFilter === 'all' ? cases : cases.filter(c => (c.status||'none') === dashFilter);
+  if (!filtered.length) {
+    document.getElementById('dash-content').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">案件がありません</div><div style="font-size:12px;">「新規案件」ボタンから追加してください</div></div>`;
+    return;
+  }
+  document.getElementById('dash-content').innerHTML = '<div class="dash-grid">' + filtered.map(c => {
+    const p = gp(c), all = allTasks(c), dn = all.filter(t => c.checks[t.id]).length, pt = all.length ? Math.round(dn/all.length*100) : 0;
+    const st = stInfo(c.status||'none');
+    const waitChips = c.waitFlags && Object.keys(c.waitFlags).some(k=>c.waitFlags[k])
+      ? `<div class="waiting-chips">${WAIT_ITEMS.filter(w=>c.waitFlags[w.key]).map(w=>`<span class="wchip">⏳ ${w.label}</span>`).join('')}</div>` : '';
+    const tantoLast = c.tantoLog && c.tantoLog.length ? `<div style="font-size:10px;color:#64748B;margin-top:4px;">担当: ${esc(c.tantoLog[c.tantoLog.length-1].name)}</div>` : '';
+    return `<div class="dc" onclick="openChecklist('${c.id}')">
+      <div class="dc-head">
+        <div class="dc-ico">${p.icon}</div>
+        <div class="dc-inf">
+          <div class="dc-co">${esc(c.company)}</div>
+          <div class="dc-sub">${esc(c.name||'')}${c.name?' · ':''}${esc(c.created_at ? c.created_at.split('T')[0] : '')}</div>
+        </div>
+        <div class="dc-right">
+          <span class="dc-proc" style="background:${p.color}18;color:${p.color}">${esc(c.proc)}</span>
+          <span class="dc-pct" style="color:${p.color}">${pt}%</span>
+        </div>
+      </div>
+      <span class="st-badge" style="background:${st.bg};color:${st.color}">● ${st.label}</span>
+      ${waitChips}
+      <div class="dc-bar"><div class="dc-bar-fill" style="width:${pt}%;background:${p.color}"></div></div>
+      <div class="dc-bl"><span>${dn} / ${all.length} タスク完了</span></div>
+      ${tantoLast}
+      <select class="st-sel" onchange="setStatusFromDash('${c.id}',this.value)" onclick="event.stopPropagation()">
+        ${STATUSES.map(s=>`<option value="${s.key}"${(c.status||'none')===s.key?' selected':''}>${s.label}</option>`).join('')}
+      </select>
+      <div class="dc-acts">
+        <button class="dc-btn dc-open" onclick="event.stopPropagation();openChecklist('${c.id}')">☑ チェックリストを開く</button>
+        <button class="dc-btn dc-del" onclick="event.stopPropagation();deleteCase('${c.id}')">🗑 削除</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function setDashFilter(f) { dashFilter = f; renderDash(); }
+
+async function setStatusFromDash(id, val) {
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  c.status = val;
+  await saveCase(c);
+  renderDash();
+  renderSidebar();
+}
+
+// ============================================================
+// チェックリスト
+// ============================================================
+function renderChecklist() {
+  const c = cases.find(x => x.id === currentId);
+  if (!c) { showView('d'); return; }
+  const p = gp(c), all = allTasks(c), dn = all.filter(t => c.checks[t.id]).length, pt = all.length ? Math.round(dn/all.length*100) : 0;
+  const st = stInfo(c.status||'none');
+
+  // ヘッダー
+  document.getElementById('cl-proc-badge').innerHTML = `<span style="background:${p.color}18;color:${p.color};padding:2px 9px;border-radius:6px;font-size:10px;font-weight:700;">${p.icon} ${esc(c.proc)}</span>`;
+  document.getElementById('cl-co').textContent = c.company;
+  document.getElementById('cl-name').textContent = c.name || '';
+  document.getElementById('cl-pct').textContent = pt + '%';
+  document.getElementById('cl-pct').style.color = p.color;
+  document.getElementById('cl-bar-fill').style.width = pt + '%';
+  document.getElementById('cl-bar-fill').style.background = p.color;
+  document.getElementById('cl-task-cnt').textContent = `${dn} / ${all.length} タスク完了`;
+  document.getElementById('cl-st-badge').innerHTML = `<span style="background:${st.bg};color:${st.color};padding:2px 9px;border-radius:8px;font-size:10px;font-weight:700;">● ${st.label}</span>`;
+  document.getElementById('cl-st-sel').innerHTML = STATUSES.map(s => `<option value="${s.key}"${(c.status||'none')===s.key?' selected':''}>${s.label}</option>`).join('');
+
+  // 待ち中パネル
+  const isWait = (c.status||'none') === 'wait';
+  document.getElementById('wait-panel').style.display = isWait ? '' : 'none';
+  if (isWait) {
+    document.getElementById('wait-checks').innerHTML = WAIT_ITEMS.map(w =>
+      `<label class="wait-check">
+        <input type="checkbox" ${c.waitFlags && c.waitFlags[w.key] ? 'checked' : ''} onchange="toggleWaitFlag('${w.key}',this.checked)">
+        ${w.label}
+      </label>`
+    ).join('');
+    document.getElementById('wait-memo').value = c.waitMemo || '';
+  }
+
+  // 担当者パネル
+  const tantoHist = c.tantoLog && c.tantoLog.length
+    ? c.tantoLog.slice(-3).map(t => `<span>${esc(t.name)}</span>`).join(' ')
+    : '<span style="color:#94A3B8;">まだ記録なし</span>';
+  document.getElementById('tanto-hist').innerHTML = tantoHist;
+  document.getElementById('tanto-input').value = '';
+
+  // チェックリスト本体
+  let sn = 0, html = '';
+  p.sections.forEach(sec => {
+    const st2 = sec.tasks.length, sd = sec.tasks.filter(t => c.checks[t.id]).length;
+    html += `<div class="sec-head" style="background:${p.color}18;border-left:4px solid ${p.color}">
+      <span class="sec-title" style="color:${p.color}">${esc(sec.title)}</span>
+      <span class="sec-cnt">${sd}/${st2}</span>
+    </div>`;
+    sec.tasks.forEach(task => {
+      sn++;
+      const ck = !!c.checks[task.id], ex = !!expanded[task.id];
+      html += `<div class="task-card${ck?' done':''}">
+        <div class="task-row">
+          <div class="task-num" style="background:${ck?'#22C55E':p.color+'22'};color:${ck?'#fff':p.color}">${ck?'✓':sn}</div>
+          <input type="checkbox" class="task-cb" ${ck?'checked':''} style="accent-color:${p.color}" onchange="toggleTask('${task.id}')">
+          <div class="task-info">
+            <div class="task-label${ck?' done':''}">${esc(task.label)}</div>
+            ${task.warn ? `<div class="task-warn">${esc(task.warn)}</div>` : ''}
+          </div>
+          <button class="task-toggle" onclick="toggleNote('${task.id}')">${ex?'▲':'▼'}</button>
+        </div>
+        ${ex ? `<div class="task-note">💡 ${esc(task.note)}</div>` : ''}
+      </div>`;
+    });
+  });
+  document.getElementById('cl-body').innerHTML = html;
+}
+
+async function toggleTask(taskId) {
+  const c = cases.find(x => x.id === currentId);
+  if (!c) return;
+  c.checks[taskId] = !c.checks[taskId];
+  renderChecklist();
+  renderSidebar();
+  await saveCase(c);
+  // 全タスク完了 → 自動で完了提案
+  const all = allTasks(c);
+  if (all.every(t => c.checks[t.id]) && (c.status||'none') !== 'done') {
+    if (confirm('全タスクが完了しました。ステータスを「完了」に変更しますか？')) {
+      c.status = 'done';
+      await saveCase(c);
+      renderChecklist();
+      renderSidebar();
+      toast('✅ 案件を完了にしました');
+    }
+  }
+}
+
+function toggleNote(taskId) {
+  expanded[taskId] = !expanded[taskId];
+  renderChecklist();
+}
+
+async function setStatusFromCL(val) {
+  const c = cases.find(x => x.id === currentId);
+  if (!c) return;
+  c.status = val;
+  await saveCase(c);
+  renderChecklist();
+  renderSidebar();
+}
+
+async function toggleWaitFlag(key, val) {
+  const c = cases.find(x => x.id === currentId);
+  if (!c) return;
+  if (!c.waitFlags) c.waitFlags = {};
+  c.waitFlags[key] = val;
+  await saveCase(c);
+}
+
+let _waitMemoTimer = null;
+function saveWaitMemo(val) {
+  clearTimeout(_waitMemoTimer);
+  _waitMemoTimer = setTimeout(async () => {
+    const c = cases.find(x => x.id === currentId);
+    if (!c) return;
+    c.waitMemo = val;
+    await saveCase(c);
+  }, 800);
+}
+
+async function saveTanto() {
+  const c = cases.find(x => x.id === currentId);
+  if (!c) return;
+  const name = document.getElementById('tanto-input').value.trim();
+  if (!name) return;
+  if (!c.tantoLog) c.tantoLog = [];
+  c.tantoLog.push({ name, date: new Date().toLocaleDateString('ja-JP') });
+  if (c.tantoLog.length > 10) c.tantoLog = c.tantoLog.slice(-10);
+  document.getElementById('tanto-input').value = '';
+  renderChecklist();
+  await saveCase(c);
+  toast(`📝 ${name} さんを担当として記録しました`);
+}
+
+// ============================================================
+// 新規案件作成
+// ============================================================
+function uNewBtn() {
+  document.getElementById('n-submit').disabled = !(document.getElementById('n-co').value.trim() && selProc);
+}
+
+function renderProcGrid() {
+  selProc = null;
+  document.getElementById('proc-grid').innerHTML = PROC_KEYS.map((k, i) => {
+    const v = P[k];
+    return `<button class="po" id="pob${i}" data-key="${esc(k)}" onclick="selP(${i})">${v.icon} ${esc(k)}</button>`;
+  }).join('');
+}
+
+function selP(idx) {
+  const btn = document.getElementById('pob'+idx);
+  if (!btn) return;
+  selProc = btn.getAttribute('data-key');
+  PROC_KEYS.forEach((_,i) => {
+    const b = document.getElementById('pob'+i);
+    if (b) { b.style.borderColor='#E2E8F0'; b.style.color=''; b.style.background=''; }
+  });
+  const col = P[selProc].color;
+  btn.style.borderColor = col;
+  btn.style.color = col;
+  btn.style.background = col+'18';
+  uNewBtn();
+}
+
+async function createCase() {
+  const co = document.getElementById('n-co').value.trim();
+  const na = document.getElementById('n-na').value.trim();
+  if (!co || !selProc) return;
+  const c = {
+    id: 'tmp_' + Date.now(),
+    company: co, name: na, proc: selProc,
+    status: 'none', checks: {}, waitFlags: {}, waitMemo: '', tantoLog: [],
+    created_at: new Date().toISOString(),
+  };
+  cases.push(c);
+  closeModal('ov-new');
+  document.getElementById('n-co').value = '';
+  document.getElementById('n-na').value = '';
+  selProc = null;
+  document.getElementById('n-submit').disabled = true;
+  renderAll();
+  const ok = await insertCase(c);
+  if (ok) {
+    toast('✅ 案件を作成しました');
+    renderAll();
+    openChecklist(c.id);
+  } else {
+    toast('⚠️ DB保存に失敗しました。テーブルの設定を確認してください。');
+  }
+}
+
+async function deleteCase(id) {
+  if (!confirm('この案件を削除しますか？')) return;
+  if (currentId === id) { currentId = null; showView('d'); }
+  await removeCase(id);
+  renderAll();
+  toast('🗑 削除しました');
+}
+
+// ============================================================
+// 用語集
+// ============================================================
+function renderGlossary() {
+  document.getElementById('gl-content').innerHTML = Object.entries(GL).map(([t,d]) =>
+    `<div class="gl-item"><div class="gl-term">${esc(t)}</div><div class="gl-def">${esc(d)}</div></div>`
+  ).join('');
+}
+
+// ============================================================
+// モーダル
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.remove('hidden');
+  if (id === 'ov-new') renderProcGrid();
+  if (id === 'ov-gl') renderGlossary();
+}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.ov').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.add('hidden'); });
+});
+
+// ============================================================
+// トースト
+// ============================================================
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// まとめてレンダリング
+// ============================================================
+function renderAll() {
+  renderSidebar();
+  if (viewMode === 'd') renderDash();
+  else renderChecklist();
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+(async () => {
+  await loadData();
+})();
+</script>
+</body>
+</html>
