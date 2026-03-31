@@ -61,6 +61,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
 .stf{padding:5px 12px;border-radius:16px;border:2px solid transparent;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:4px;}
 .stf.off{background:#fff!important;color:#64748B!important;border-color:#E2E8F0!important;}
 .stf-cnt{background:rgba(0,0,0,.12);border-radius:8px;padding:1px 6px;font-size:10px;}
+/* 絞り込みバー */
+.filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.filter-select{padding:5px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff;color:#475569;cursor:pointer;outline:none;}
+.filter-select:focus{border-color:#2563EB;}
+.filter-clear{padding:5px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:11px;font-family:inherit;background:#fff;color:#94A3B8;cursor:pointer;}
+.filter-clear:hover{background:#F1F5F9;color:#475569;}
+.proc-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.proc-chip{padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all .12s;}
+.proc-chip.off{background:#fff!important;color:#64748B!important;border-color:#E2E8F0!important;}
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
 .dc{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer;border:2px solid transparent;transition:all .15s;}
 .dc:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.12);}
@@ -149,6 +158,12 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
 /* モーダル */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px;}
 .ov.hidden{display:none;}
+.shoshiki-check{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border:1px solid #E2E8F0;border-radius:6px;cursor:pointer;transition:all .12s;}
+.shoshiki-check:hover{border-color:#CBD5E1;background:#F8FAFC;}
+.shoshiki-check.on{border-color:#DC2626;background:#FEF2F2;}
+.shoshiki-check input{accent-color:#DC2626;margin-top:2px;flex-shrink:0;}
+.shoshiki-check .sl{font-size:11px;font-weight:700;color:#DC2626;}
+.shoshiki-check .sd{font-size:10px;color:#64748B;margin-top:1px;}
 .mbox{background:#fff;border-radius:12px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;}
 .mt{font-size:15px;font-weight:700;color:#0F172A;margin-bottom:16px;}
 .fg{margin-bottom:12px;}
@@ -206,7 +221,6 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
       <button class="sf-btn on" id="sf-all" onclick="setSbFilter('all')">すべて</button>
       <button class="sf-btn" id="sf-none" onclick="setSbFilter('none')" style="border-left:3px solid #6B7280;">未手続</button>
       <button class="sf-btn" id="sf-wait" onclick="setSbFilter('wait')" style="border-left:3px solid #D97706;">待ち中</button>
-      <button class="sf-btn" id="sf-apply" onclick="setSbFilter('apply')" style="border-left:3px solid #D97706;">申請済</button>
       <button class="sf-btn" id="sf-kobunsho" onclick="setSbFilter('kobunsho')" style="border-left:3px solid #7C3AED;">公文書待ち</button>
       <button class="sf-btn" id="sf-done" onclick="setSbFilter('done')" style="border-left:3px solid #059669;">完了</button>
     </div>
@@ -222,6 +236,16 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
         <button class="bcn" style="padding:5px 14px;font-size:11px;border-radius:6px;" onclick="openModal('ov-new')">＋ 新規案件</button>
       </div>
       <div class="summary" id="summary"></div>
+      <div class="filter-bar">
+        <select class="filter-select" id="company-filter" onchange="renderDash()">
+          <option value="">会社：すべて</option>
+        </select>
+        <select class="filter-select" id="proc-filter" onchange="renderDash()">
+          <option value="">手続き：すべて</option>
+        </select>
+        <button class="filter-clear" onclick="clearFilters()">絞り込みをリセット</button>
+      </div>
+      <div class="proc-summary" id="proc-summary"></div>
       <div class="status-filters" id="status-filters"></div>
       <div id="dash-content"></div>
     </div>
@@ -281,6 +305,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
     <div class="fg">
       <label class="fl">手続き種別 <span class="req">*</span></label>
       <div class="pg" id="proc-grid"></div>
+    </div>
+    <div id="rousai-shoshiki-area" style="display:none;margin-bottom:12px;">
+      <label class="fl">使用する様式（複数選択可） <span class="req">*</span></label>
+      <div id="rousai-shoshiki-grid" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;"></div>
     </div>
     <div class="mbtns">
       <button class="bcn" onclick="closeModal('ov-new')">キャンセル</button>
@@ -363,7 +391,6 @@ async function sbDelete(id) {
 const STATUSES = [
   { key: 'none',     label: '未手続',     color: '#6B7280', bg: '#F3F4F6' },
   { key: 'wait',     label: '待ち中',     color: '#D97706', bg: '#FFFBEB' },
-  { key: 'apply',    label: '申請済',     color: '#D97706', bg: '#FFFBEB' },
   { key: 'kobunsho', label: '公文書待ち', color: '#7C3AED', bg: '#F5F3FF' },
   { key: 'done',     label: '完了',       color: '#059669', bg: '#F0FDF4' },
 ];
@@ -378,6 +405,18 @@ function stInfo(k) { return STATUSES.find(s => s.key === k) || STATUSES[0]; }
 // ============================================================
 // 手続きデータ定義
 // ============================================================
+// 労災様式の定義
+const ROUSAI_SHOSHIKI = [
+  { key: 's5',    label: '様式第5号',     desc: '療養補償給付（業務災害・指定医療機関）' },
+  { key: 's7',    label: '様式第7号',     desc: '療養補償給付（業務災害・非指定医療機関）' },
+  { key: 's16_3', label: '様式第16号の3', desc: '療養給付（通勤災害・指定医療機関）' },
+  { key: 's16_5', label: '様式第16号の5', desc: '療養給付（通勤災害・非指定医療機関）' },
+  { key: 's8',    label: '様式第8号',     desc: '休業補償給付（業務災害）' },
+  { key: 's16_6', label: '様式第16号の6', desc: '休業給付（通勤災害）' },
+  { key: 's23',   label: '様式第23号',    desc: '死傷病報告書' },
+  { key: 's22',   label: '様式第22号',    desc: '第三者行為災害届（業務・通勤共通）' },
+];
+
 const PROC_KEYS = ["入社","退職","同日得喪","扶養","氏名変更","住所変更","傷病手当","月変・賃金入力","賞与支払届","36協定","労災","療養費","限度額","70歳","保険証再交付","事業所成立","事業所廃止","所在地変更","名称変更","代表者変更","海外労災","就業規則届","一人親方"];
 
 const P = {
@@ -598,14 +637,69 @@ const P = {
     {id:"36a6",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
   ]},
 ]},
-"労災":{color:"#DC2626",icon:"🦺",sections:[
-  {title:"手続き",tasks:[
-    {id:"lc1",label:"労災発生状況の確認",note:"発生日時・場所・状況を確認します。",warn:"⚠️ 業務災害か通勤災害かを確認すること"},
-    {id:"lc2",label:"療養補償給付（様式第5号）の準備",note:"業務災害の場合は様式第5号を準備します。",warn:null},
-    {id:"lc3",label:"事業主の証明記入",note:"事業主証明欄を記入します。",warn:null},
-    {id:"lc4",label:"労基署への提出または医療機関への交付",note:"医療機関への交付または労基署へ提出します。",warn:null},
-    {id:"lc5",label:"手続き後、ドキュを整理する",note:"提出済み書類をドキュで整理します。",warn:null},
-    {id:"lc6",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
+"労災":{color:"#DC2626",icon:"🦺",isRousai:true,sections:[
+  {title:"共通：発生確認",tasks:[
+    {id:"lc0",label:"労災発生状況の確認",note:"発生日時・場所・状況・被災者情報を確認します。",warn:"⚠️ 業務災害か通勤災害かを必ず確認すること"},
+    {id:"lc0b",label:"第三者行為の有無を確認",note:"第三者（交通事故の相手方等）が関与する場合は様式第22号（第三者行為災害届）が必要です。",warn:null},
+  ]},
+  {title:"様式第5号：療養補償給付（業務災害・指定医療機関）",rousaiKey:"s5",tasks:[
+    {id:"lc5a",label:"様式第5号の準備・記入",note:"療養補償給付たる療養の給付請求書。指定医療機関を受診する場合に使用。",warn:null},
+    {id:"lc5b",label:"事業主の証明記入",note:"事業主証明欄（発生状況・賃金等）を記入します。",warn:"⚠️ 事業主証明は必須"},
+    {id:"lc5c",label:"指定医療機関へ交付",note:"被災労働者が指定医療機関の窓口へ提出します（労基署提出不要）。",warn:null},
+    {id:"lc5d",label:"ドキュに控えを保存",note:"提出した様式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第7号：療養補償給付（業務災害・非指定医療機関）",rousaiKey:"s7",tasks:[
+    {id:"lc7a",label:"様式第7号の準備・記入",note:"非指定医療機関（通常の病院）を受診した場合に使用。立替払い後に請求します。",warn:null},
+    {id:"lc7b",label:"事業主の証明記入",note:"事業主証明欄を記入します。",warn:"⚠️ 事業主証明は必須"},
+    {id:"lc7c",label:"領収書・診断書の収集",note:"医療機関の領収書・診断書（傷病名・治療内容）を収集します。",warn:null},
+    {id:"lc7d",label:"労働基準監督署へ提出",note:"様式第7号＋領収書＋診断書を労基署へ提出します。",warn:null},
+    {id:"lc7e",label:"ドキュに控えを保存",note:"提出した書類一式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第16号の3：療養給付（通勤災害・指定医療機関）",rousaiKey:"s16_3",tasks:[
+    {id:"lc163a",label:"様式第16号の3の準備・記入",note:"通勤災害で指定医療機関を受診する場合に使用。",warn:"⚠️ 業務災害と様式が異なるので注意"},
+    {id:"lc163b",label:"事業主の証明記入",note:"通勤の事実・経路等について事業主が証明します。",warn:null},
+    {id:"lc163c",label:"指定医療機関へ交付",note:"被災労働者が指定医療機関の窓口へ提出します。",warn:null},
+    {id:"lc163d",label:"ドキュに控えを保存",note:"提出した様式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第16号の5：療養給付（通勤災害・非指定医療機関）",rousaiKey:"s16_5",tasks:[
+    {id:"lc165a",label:"様式第16号の5の準備・記入",note:"通勤災害で非指定医療機関を受診した場合に使用。立替払い後に請求します。",warn:"⚠️ 業務災害と様式が異なるので注意"},
+    {id:"lc165b",label:"事業主の証明記入",note:"通勤の事実・経路等について事業主が証明します。",warn:null},
+    {id:"lc165c",label:"領収書・診断書の収集",note:"医療機関の領収書・診断書を収集します。",warn:null},
+    {id:"lc165d",label:"労働基準監督署へ提出",note:"様式第16号の5＋領収書＋診断書を労基署へ提出します。",warn:null},
+    {id:"lc165e",label:"ドキュに控えを保存",note:"提出した書類一式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第8号：休業補償給付（業務災害）",rousaiKey:"s8",tasks:[
+    {id:"lc8a",label:"様式第8号の準備・記入",note:"業務災害による休業4日目以降から請求できます。",warn:"⚠️ 待期3日間は事業主が補償（休業補償）"},
+    {id:"lc8b",label:"事業主の証明記入",note:"休業日数・平均賃金等を事業主が証明します。",warn:null},
+    {id:"lc8c",label:"賃金台帳・出勤簿の収集",note:"直近3か月分の賃金台帳と出勤簿を収集します。",warn:null},
+    {id:"lc8d",label:"労働基準監督署へ提出",note:"原則として月1回まとめて提出します（2か月分まとめて提出可）。",warn:null},
+    {id:"lc8e",label:"公文書取得・ドキュ",note:"支給決定通知書を受領しドキュに保存します。",warn:null},
+    {id:"lc8f",label:"ドキュに控えを保存",note:"提出した書類一式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第16号の6：休業給付（通勤災害）",rousaiKey:"s16_6",tasks:[
+    {id:"lc166a",label:"様式第16号の6の準備・記入",note:"通勤災害による休業4日目以降から請求できます。",warn:"⚠️ 業務災害と様式が異なるので注意"},
+    {id:"lc166b",label:"事業主の証明記入",note:"休業日数・平均賃金・通勤の事実等を事業主が証明します。",warn:null},
+    {id:"lc166c",label:"賃金台帳・出勤簿の収集",note:"直近3か月分の賃金台帳と出勤簿を収集します。",warn:null},
+    {id:"lc166d",label:"労働基準監督署へ提出",note:"原則として月1回まとめて提出します。",warn:null},
+    {id:"lc166e",label:"公文書取得・ドキュ",note:"支給決定通知書を受領しドキュに保存します。",warn:null},
+    {id:"lc166f",label:"ドキュに控えを保存",note:"提出した書類一式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第23号：死傷病報告書",rousaiKey:"s23",tasks:[
+    {id:"lc23a",label:"様式第23号の準備・記入",note:"業務上の死亡または休業4日以上の場合は遅滞なく提出。休業1〜3日は四半期ごとにまとめて提出。",warn:"⚠️ 提出遅延・虚偽記載は罰則あり"},
+    {id:"lc23b",label:"発生状況・被災者情報の確認",note:"傷病名・発生日時・発生場所・発生状況・治療日数等を確認します。",warn:null},
+    {id:"lc23c",label:"労働基準監督署へ提出",note:"事業所管轄の労働基準監督署へ提出します。",warn:null},
+    {id:"lc23d",label:"ドキュに控えを保存",note:"提出した書類の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"様式第22号：第三者行為災害届",rousaiKey:"s22",tasks:[
+    {id:"lc22a",label:"第三者行為の事実確認",note:"交通事故・暴行等、第三者が関与する労災の場合に必要です。",warn:"⚠️ 療養・休業の請求書と同時提出が原則"},
+    {id:"lc22b",label:"様式第22号の準備・記入",note:"第三者行為災害届（様式第22号）を準備します。通勤災害も同じ様式です。",warn:null},
+    {id:"lc22c",label:"交通事故証明書の収集",note:"交通事故の場合は自動車安全運転センターの交通事故証明書が必要です。",warn:null},
+    {id:"lc22d",label:"念書（第三者からの損害賠償を受けていない旨）の準備",note:"被災労働者本人が署名する念書を準備します。",warn:null},
+    {id:"lc22e",label:"労働基準監督署へ提出",note:"療養・休業給付の請求書と一緒に提出します。",warn:null},
+    {id:"lc22f",label:"ドキュに控えを保存",note:"提出した書類一式の控えをドキュに保存します。",warn:null},
+  ]},
+  {title:"共通：完了処理",tasks:[
+    {id:"lc_fin",label:"チェックリストのドキュ",note:"完了したチェックリストをドキュに保存して案件を締めます。",warn:null},
   ]},
 ]},
 "療養費":{color:"#BE185D",icon:"💊",sections:[
@@ -781,6 +875,7 @@ async function loadData() {
       waitFlags: r.wait_flags || {},
       waitMemo: r.wait_memo || '',
       tantoLog: r.tanto_log || [],
+      rousaiShoshiki: r.rousai_shoshiki || [],
     }));
     _lastSync = Date.now();
     setSyncStatus('☁️ 同期済');
@@ -799,6 +894,7 @@ async function saveCase(c) {
     wait_flags: c.waitFlags || {},
     wait_memo: c.waitMemo || '',
     tanto_log: c.tantoLog || [],
+    rousai_shoshiki: c.rousaiShoshiki || [],
     updated_at: new Date().toISOString(),
   };
   const ok = await sbUpdate(c.id, payload);
@@ -883,7 +979,7 @@ function openChecklist(id) {
 // ============================================================
 function setSbFilter(f) {
   sbFilter = f;
-  ['all','none','wait','apply','kobunsho','done'].forEach(k => {
+  ['all','none','wait','kobunsho','done'].forEach(k => {
     const el = document.getElementById('sf-'+k);
     if (el) el.classList.toggle('on', k === f);
   });
@@ -915,6 +1011,33 @@ function renderSidebar() {
 // ダッシュボード
 // ============================================================
 function renderDash() {
+  // 会社・手続きフィルターの選択肢を更新
+  const companyEl = document.getElementById('company-filter');
+  const procEl = document.getElementById('proc-filter');
+  const companyVal = companyEl ? companyEl.value : '';
+  const procVal = procEl ? procEl.value : '';
+  const companies = [...new Set(cases.map(c => c.company))].sort();
+  const procs = [...new Set(cases.map(c => c.proc))].sort();
+  if (companyEl) {
+    companyEl.innerHTML = '<option value="">会社：すべて</option>' +
+      companies.map(co => `<option value="${esc(co)}" ${co===companyVal?'selected':''}>${esc(co)}</option>`).join('');
+  }
+  if (procEl) {
+    procEl.innerHTML = '<option value="">手続き：すべて</option>' +
+      procs.map(pr => `<option value="${esc(pr)}" ${pr===procVal?'selected':''}>${esc(pr)}</option>`).join('');
+  }
+
+  // 手続き別集計
+  const procCounts = {};
+  cases.forEach(c => { procCounts[c.proc] = (procCounts[c.proc]||0)+1; });
+  document.getElementById('proc-summary').innerHTML = Object.entries(procCounts)
+    .sort((a,b) => b[1]-a[1])
+    .map(([pr, cnt]) => {
+      const p = P[pr] || {color:'#6B7280', icon:'📋'};
+      const on = procVal === pr;
+      return `<span class="proc-chip${on?'':' off'}" style="background:${p.color}18;color:${p.color};border-color:${on?p.color:'transparent'}" onclick="setProcFilter('${esc(pr)}')">${p.icon} ${esc(pr)} ${cnt}</span>`;
+    }).join('');
+
   const counts = {};
   STATUSES.forEach(s => counts[s.key] = 0);
   cases.forEach(c => { counts[c.status||'none'] = (counts[c.status||'none']||0)+1; });
@@ -932,10 +1055,14 @@ function renderDash() {
     `<button class="stf${dashFilter==='all'?'':' off'}" style="background:#1E293B;color:#fff;border-color:#1E293B" onclick="setDashFilter('all')">すべて <span class="stf-cnt">${cases.length}</span></button>` +
     STATUSES.map(s => `<button class="stf${dashFilter===s.key?'':' off'}" style="background:${s.bg};color:${s.color};border-color:${s.color}" onclick="setDashFilter('${s.key}')">${s.label} <span class="stf-cnt">${counts[s.key]||0}</span></button>`).join('');
 
-  // カード
-  const filtered = dashFilter === 'all' ? cases : cases.filter(c => (c.status||'none') === dashFilter);
+  // 絞り込み適用
+  let filtered = cases;
+  if (dashFilter !== 'all') filtered = filtered.filter(c => (c.status||'none') === dashFilter);
+  if (companyVal) filtered = filtered.filter(c => c.company === companyVal);
+  if (procVal) filtered = filtered.filter(c => c.proc === procVal);
+
   if (!filtered.length) {
-    document.getElementById('dash-content').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">案件がありません</div><div style="font-size:12px;">「新規案件」ボタンから追加してください</div></div>`;
+    document.getElementById('dash-content').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">該当する案件がありません</div><div style="font-size:12px;">絞り込み条件を変えてみてください</div></div>`;
     return;
   }
   document.getElementById('dash-content').innerHTML = '<div class="dash-grid">' + filtered.map(c => {
@@ -973,6 +1100,19 @@ function renderDash() {
 }
 
 function setDashFilter(f) { dashFilter = f; renderDash(); }
+function setProcFilter(pr) {
+  const el = document.getElementById('proc-filter');
+  if (el) el.value = el.value === pr ? '' : pr;
+  renderDash();
+}
+function clearFilters() {
+  dashFilter = 'all';
+  const co = document.getElementById('company-filter');
+  const pr = document.getElementById('proc-filter');
+  if (co) co.value = '';
+  if (pr) pr.value = '';
+  renderDash();
+}
 
 async function setStatusFromDash(id, val) {
   const c = cases.find(x => x.id === id);
@@ -1026,7 +1166,17 @@ function renderChecklist() {
 
   // チェックリスト本体
   let sn = 0, html = '';
-  p.sections.forEach(sec => {
+  // 労災の場合は選択した様式のセクションのみ表示
+  const visibleSections = p.isRousai && c.rousaiShoshiki && c.rousaiShoshiki.length > 0
+    ? p.sections.filter(s => !s.rousaiKey || c.rousaiShoshiki.includes(s.rousaiKey))
+    : p.sections;
+  // 労災の場合、選択様式のバッジを表示
+  if (p.isRousai && c.rousaiShoshiki && c.rousaiShoshiki.length > 0) {
+    html += `<div style="padding:8px 16px 4px;display:flex;gap:6px;flex-wrap:wrap;">
+      ${ROUSAI_SHOSHIKI.filter(s=>c.rousaiShoshiki.includes(s.key)).map(s=>`<span style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">${s.label} ${s.desc}</span>`).join('')}
+    </div>`;
+  }
+  visibleSections.forEach(sec => {
     const st2 = sec.tasks.length, sd = sec.tasks.filter(t => c.checks[t.id]).length;
     html += `<div class="sec-head" style="background:${p.color}18;border-left:4px solid ${p.color}">
       <span class="sec-title" style="color:${p.color}">${esc(sec.title)}</span>
@@ -1146,6 +1296,23 @@ function selP(idx) {
   btn.style.borderColor = col;
   btn.style.color = col;
   btn.style.background = col+'18';
+  // 労災の場合は様式選択エリアを表示
+  const rArea = document.getElementById('rousai-shoshiki-area');
+  if (selProc === '労災') {
+    rArea.style.display = '';
+    document.getElementById('rousai-shoshiki-grid').innerHTML = ROUSAI_SHOSHIKI.map(s =>
+      `<label class="shoshiki-check" id="rsc-${s.key}" onclick="toggleShoshiki('${s.key}',this)">
+        <input type="checkbox" id="rscb-${s.key}" onchange="uNewBtn()">
+        <div><div class="sl">${s.label}</div><div class="sd">${s.desc}</div></div>
+      </label>`
+    ).join('');
+  } else {
+    rArea.style.display = 'none';
+  }
+  uNewBtn();
+}
+function toggleShoshiki(key, el) {
+  el.classList.toggle('on');
   uNewBtn();
 }
 
@@ -1154,6 +1321,13 @@ async function createCase() {
   const na = document.getElementById('n-na').value.trim();
   if (!co || !selProc) return;
   const procKey = selProc;
+  // 労災の場合、選択した様式を収集
+  const rousaiShoshiki = procKey === '労災'
+    ? ROUSAI_SHOSHIKI.filter(s => {
+        const cb = document.getElementById('rscb-'+s.key);
+        return cb && cb.checked;
+      }).map(s => s.key)
+    : [];
   closeModal('ov-new');
   document.getElementById('n-co').value = '';
   document.getElementById('n-na').value = '';
@@ -1164,6 +1338,7 @@ async function createCase() {
   const payload = {
     company: co, name: na, proc: procKey,
     status: 'none', checks: {}, wait_flags: {}, wait_memo: '', tanto_log: [],
+    rousai_shoshiki: rousaiShoshiki,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   };
   const row = await sbInsert(payload);
@@ -1175,6 +1350,7 @@ async function createCase() {
       waitFlags: row.wait_flags || {},
       waitMemo: row.wait_memo || '',
       tantoLog: row.tanto_log || [],
+      rousaiShoshiki: row.rousai_shoshiki || [],
     };
     cases.push(c);
     localStorage.setItem('cl-cases', JSON.stringify(cases));
