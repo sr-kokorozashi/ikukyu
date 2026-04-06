@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>産休・育休管理システム v2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -270,14 +267,9 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
       <div class="sidebar-label">ステータス</div>
       <div class="sidebar-item" onclick="filterByStatus('産休前')">🤰 産休前</div>
       <div class="sidebar-item" onclick="filterByStatus('産休中')">🏥 産休中</div>
-      <div class="sidebar-item" onclick="filterByStatus('産後パパ育休中')">🍼 産後パパ育休中</div>
       <div class="sidebar-item" onclick="filterByStatus('育休中')">👶 育休中</div>
       <div class="sidebar-item" onclick="filterByStatus('復帰済')">✅ 復帰済</div>
       <div class="sidebar-item" onclick="filterByStatus('時短中')">⏱ 時短中</div>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">絞り込み</div>
-      <div class="sidebar-item" onclick="filterByAlert('kobunsho')">📬 公文書待ち</div>
     </div>
   </aside>
 
@@ -305,7 +297,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
         <div class="stat-card green"><div class="stat-label">完了済み</div><div class="stat-value" id="stat-done">0</div><div class="stat-sub">件の手続き</div></div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">🚨 期限超過の手続き</div></div>
+        <div class="card-header"><div class="card-title">🚨 要対応・直近の手続き（14日以内）</div></div>
         <div style="padding:20px;" id="dashboard-upcoming">
           <div class="empty"><div class="empty-icon">📭</div><div class="empty-text">案件を登録してください</div></div>
         </div>
@@ -336,7 +328,6 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
             <option value="">全ステータス</option>
             <option value="産休前">産休前</option>
             <option value="産休中">産休中</option>
-            <option value="産後パパ育休中">産後パパ育休中</option>
             <option value="育休中">育休中</option>
             <option value="復帰済">復帰済</option>
             <option value="時短中">時短中</option>
@@ -344,7 +335,6 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
           <select class="filter-select" id="alert-filter" onchange="renderCaseTable()">
             <option value="">全案件</option>
             <option value="alert">要対応のみ</option>
-            <option value="kobunsho">公文書待ち</option>
           </select>
         </div>
         <div id="case-table-container"></div>
@@ -354,7 +344,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
     <!-- UPCOMING -->
     <div class="page" id="page-upcoming">
       <div class="page-header">
-        <div><div class="page-title">期限カレンダー</div><div class="page-sub">期限超過・申請可能な手続き一覧</div></div>
+        <div><div class="page-title">期限カレンダー</div><div class="page-sub">今後30日間の期限一覧</div></div>
       </div>
       <div id="upcoming-content"></div>
     </div>
@@ -593,9 +583,6 @@ label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
             <option value="">通常勤務（または未定）</option>
             <option value="1">時短勤務（時短給付金対象）</option>
           </select>
-        </div>
-        <div class="form-group"><label>時短勤務開始日（復帰日と異なる場合）</label>
-          <input class="form-input" id="ff-jitan-start-date" type="date" placeholder="空欄の場合は復帰日を使用">
         </div>
         <div class="form-group"><label>育休延長</label>
           <select class="form-select" id="ff-ikukyu-extend">
@@ -894,8 +881,8 @@ async function save() {
       const rows = await res.json();
       if (rows && rows[0]) _supabaseRowId = rows[0].id;
     }
-    _lastSyncTime = Date.now();
-    updateSyncStatus();
+    document.getElementById('sync-status').textContent = '☁️ 保存済';
+    document.getElementById('sync-status').style.color = 'var(--green)';
   } catch(e) {
     console.error('Supabase save error:', e);
     document.getElementById('sync-status').textContent = '⚠️ クラウド保存失敗（ローカルのみ）';
@@ -919,9 +906,12 @@ async function loadFromSupabase() {
     if (rows && rows.length > 0 && rows[0].data) {
       _supabaseRowId = rows[0].id;
       cases = JSON.parse(rows[0].data);
+      document.getElementById('sync-status').textContent = '☁️ クラウド同期中';
+      document.getElementById('sync-status').style.color = 'var(--green)';
       return true;
     } else if (rows && rows.length === 0) {
       // テーブルは空 → 初期データを投入
+      document.getElementById('sync-status').textContent = '☁️ 初期化中...';
       return false;
     }
   } catch(e) {
@@ -938,19 +928,6 @@ async function loadFromSupabase() {
   return false;
 }
 
-// 公文書が不要な手続きID（案内系・病院直接手続き等）
-const NO_KOBUNSHO_IDS = new Set([
-  'f-gentei','f-doui','f-fuyo','f-ikkatsu',
-  'f-guide-extend-1y','f-guide-return-18m','f-guide-extend-18m',
-  'm-papa-end-shinsei'
-]);
-function isKobunshoRequired(procId) {
-  if (!procId) return false;
-  if (NO_KOBUNSHO_IDS.has(procId)) return false;
-  if (procId.startsWith('f-guide') || procId.startsWith('m-guide')) return false;
-  return true;
-}
-
 // procStatus helpers: value can be '未'/'不要' (string) or {status:'済', date:'YYYY-MM-DD'} (object)
 function getProcSt(c, procId) {
   var v = c.procStatus && c.procStatus[procId];
@@ -963,57 +940,13 @@ function getProcDate(c, procId) {
   if (v && typeof v === 'object') return v.date || null;
   return null;
 }
-function getProcMemo(c, procId) {
-  var v = c.procStatus && c.procStatus[procId];
-  if (v && typeof v === 'object') return v.memo || '';
-  return '';
-}
 function setProcSt(c, procId, status, date) {
   if (!c.procStatus) c.procStatus = {};
-  const existingMemo = getProcMemo(c, procId);
   if (status === '済') {
-    c.procStatus[procId] = { status: '済', date: date || today(), memo: existingMemo };
-  } else if (status === '不要') {
-    c.procStatus[procId] = { status: '不要', date: null, memo: existingMemo };
+    c.procStatus[procId] = { status: '済', date: date || today() };
   } else {
-    c.procStatus[procId] = { status: '未', date: null, memo: existingMemo };
+    c.procStatus[procId] = status;
   }
-}
-function getKobunsho(c, procId) {
-  var v = c.procStatus && c.procStatus[procId];
-  if (v && typeof v === 'object') return v.kobunsho || '未';
-  return '未';
-}
-async function updateKobunsho(procId, caseId, val, e) {
-  if (e) e.stopPropagation();
-  const c = cases.find(x => x.id === caseId);
-  if (!c) return;
-  if (!c.procStatus) c.procStatus = {};
-  const v = c.procStatus[procId];
-  if (typeof v === 'object' && v !== null) {
-    v.kobunsho = val;
-  } else {
-    c.procStatus[procId] = { status: v || '未', date: null, memo: '', kobunsho: val };
-  }
-  await save();
-  renderAll();
-  openCaseDetail(caseId);
-}
-
-async function updateProcMemo(procId, caseId, memo, e) {
-  if (e) e.stopPropagation();
-  const c = cases.find(x => x.id === caseId);
-  if (!c) return;
-  if (!c.procStatus) c.procStatus = {};
-  const v = c.procStatus[procId];
-  if (typeof v === 'object' && v !== null) {
-    v.memo = memo;
-  } else {
-    // string形式（'不要'など）の場合はオブジェクトに変換
-    const st = v || '未';
-    c.procStatus[procId] = { status: st, date: null, memo: memo };
-  }
-  await save();
 }
 
 // ===== DATE UTILS =====
@@ -1224,7 +1157,6 @@ function getFemaleProcedures(c) {
     name: '育児休業給付 受給資格確認・第1回支給申請',
     period: d.kyufuPeriods[0] ? `${fmtDate(d.kyufuPeriods[0].start)} 〜 ${fmtDate(d.kyufuPeriods[0].end)}` : '—',
     deadline: d.kyufuPeriods[0] ? calcDeadline(d.kyufuPeriods[0].end) : null,
-    availableDate: d.kyufuPeriods[0] ? addDays(d.kyufuPeriods[0].end, 1) : null,
     sendDate: d.kyufuPeriods[0] ? addDays(d.kyufuPeriods[0].end, -5) : null,
     docs: '育児休業給付受給資格確認票・（初回）育児休業給付金支給申請書・母子手帳（出生届出済証明ページ）・賃金台帳・出勤簿',
     note: '賃金証明書と同時提出可',
@@ -1271,7 +1203,6 @@ function getFemaleProcedures(c) {
         name: rowName,
         period: fmtDate(p.start) + ' 〜 ' + fmtDate(p.end),
         deadline: p.deadline,
-        availableDate: addDays(p.end, 1),
         sendDate: addDays(p.end, -5),
         docs: '育児休業給付金支給申請書・賃金台帳・出勤簿',
         note: rowNote,
@@ -1329,31 +1260,6 @@ function getFemaleProcedures(c) {
     });
   }
 
-  // ── 育休延長申出書（1歳6か月・2歳） ──
-  if (c.ikukyuExtend === '18m' || c.ikukyuExtend === '2y') {
-    procs.push({ section: '【育休延長手続き】', isSectionHeader: true });
-    procs.push({
-      id: 'f-ikukyu-extend-18m', no: '①',
-      name: '育児休業等取得者申出書（1歳6か月まで延長）',
-      period: d.ikukyuEnd1 ? `${fmtDate(addDays(d.ikukyuEnd1, 1))} 〜 ${fmtDate(d.ikukyuEnd18m)}` : null,
-      deadline: d.ikukyuEnd1 ? d.ikukyuEnd1 : null,
-      sendDate: d.ikukyuEnd1 ? addDays(d.ikukyuEnd1, -14) : null,
-      docs: '育児休業等取得者申出書（延長）・入所保留通知書・保育所等利用申込書の写し・延長事由認定申告書',
-      note: '1歳到達日までに提出。社保免除の継続申出も兼ねる。',
-    });
-  }
-  if (c.ikukyuExtend === '2y') {
-    procs.push({
-      id: 'f-ikukyu-extend-2y', no: '②',
-      name: '育児休業等取得者申出書（2歳まで延長）',
-      period: d.ikukyuEnd18m ? `${fmtDate(addDays(d.ikukyuEnd18m, 1))} 〜 ${fmtDate(d.ikukyuEnd)}` : null,
-      deadline: d.ikukyuEnd18m ? d.ikukyuEnd18m : null,
-      sendDate: d.ikukyuEnd18m ? addDays(d.ikukyuEnd18m, -14) : null,
-      docs: '育児休業等取得者申出書（延長）・入所保留通知書・保育所等利用申込書の写し・延長事由認定申告書',
-      note: '1歳6か月到達日までに提出。社保免除の継続申出も兼ねる。',
-    });
-  }
-
   // ── 育休終了 ──
   procs.push({ section: '【育休終了・復帰手続き】', isSectionHeader: true });
   procs.push({
@@ -1369,8 +1275,8 @@ function getFemaleProcedures(c) {
     id: 'f-yoiku', no: '②',
     name: '養育期間標準報酬月額特例申出書',
     period: null,
-    deadline: c.returnDate ? c.returnDate : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, -7) : null,
+    deadline: c.returnDate ? addDays(c.returnDate, 60) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 14) : null,
     docs: '養育期間標準報酬月額特例申出書・住民票（続柄記載）',
     note: '3歳未満の子を養育する場合',
   });
@@ -1378,46 +1284,41 @@ function getFemaleProcedures(c) {
     id: 'f-gekkan', no: '③',
     name: '育休終了時報酬月額変更届（状況により）',
     period: c.returnDate ? `${fmtDate(c.returnDate)} 〜 ${fmtDate(addDays(c.returnDate, 90))}` : null,
-    deadline: c.returnDate ? addDays(c.returnDate, 90) : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, 85) : null,
+    deadline: c.returnDate ? addDays(c.returnDate, 100) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 89) : null,
     docs: '月額変更届・賃金台帳（復帰後3か月分）',
     note: '復帰後3か月の賃金確定後',
   });
 
   // ── 育児時短就業給付金（復帰後に時短の場合・2歳育休取得者は対象外） ──
   // 2歳まで育休を取得した場合、子が2歳に達するとそのまま終了するため時短給付金の対象期間がない
-  if (c.ikukyuExtend !== '2y') {
+  if (c.ikukyuExtend !== '2y' && c.jitan === '1') {
   procs.push({ section: '【育児時短就業給付金（復帰後に時短勤務する場合）】', isSectionHeader: true });
-  // 時短開始日：jitanStartDateが設定されていればそちらを優先、なければ復帰日
-  const jitanStart = c.jitanStartDate || c.returnDate;
   // 2歳到達日前日
   const jitanEnd2y = calcSecondBirthday(c.birthDate || c.dueDate);
-  // 初回申請期限：時短開始日から4か月以内
-  const jitanInitDeadline = jitanStart ? addDays(jitanStart, 120) : null;
-  const jitanStartNote = c.jitanStartDate && c.returnDate && c.jitanStartDate !== c.returnDate
-    ? `時短開始日：${fmtDate(c.jitanStartDate)}（復帰日${fmtDate(c.returnDate)}と異なる）` : '';
+  // 初回申請期限：時短開始日（≒復帰日）から4か月以内
+  const jitanInitDeadline = c.returnDate ? addDays(c.returnDate, 120) : null;
   procs.push({
     id: 'f-jitan-chingin', no: '①',
     name: '育児時短就業開始時賃金証明書（初回のみ）',
     period: null,
     deadline: jitanInitDeadline,
-    sendDate: jitanStart ? addDays(jitanStart, 5) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 5) : null,
     docs: '雇用保険被保険者休業開始時賃金月額証明書・所定労働時間短縮開始時賃金証明書・賃金台帳・出勤簿・労働条件通知書等',
-    note: '育休から引き続き（14日以内に）時短開始の場合は不要' + (jitanStartNote ? '\n' + jitanStartNote : ''),
+    note: '育休から引き続き（14日以内に）時短開始の場合は不要',
   });
   procs.push({
     id: 'f-jitan-shikaku', no: '②',
     name: '育児時短就業給付 受給資格確認・初回支給申請',
-    period: jitanStart ? `${fmtDate(jitanStart)} 〜 ${fmtDate(add2MonthsMinus1(jitanStart))}` : '—',
+    period: c.returnDate ? `${fmtDate(c.returnDate)} 〜 ${fmtDate(add2MonthsMinus1(c.returnDate))}` : '—',
     deadline: jitanInitDeadline,
-    availableDate: jitanStart ? addDays(add2MonthsMinus1(jitanStart), 1) : null,
-    sendDate: jitanStart ? addDays(jitanStart, 14) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 14) : null,
     docs: '育児時短就業給付受給資格確認票・（初回）育児時短就業給付金支給申請書・母子手帳または住民票（子の生年月日確認）・育児時短就業開始日確認書類・本来の週所定労働時間確認書類（就業規則等）・労働条件通知書（時短後）・出勤簿・賃金台帳',
-    note: '時短開始日から4か月以内に申請。賃金証明書と同時提出可。' + (jitanStartNote ? '\n' + jitanStartNote : ''),
+    note: '時短開始日から4か月以内に申請。賃金証明書と同時提出可。',
   });
   // 第2回以降（2か月ごと・子が2歳になるまで）
-  if (jitanStart && jitanEnd2y) {
-    let jps = add2MonthsMinus1(jitanStart);
+  if (c.returnDate && jitanEnd2y) {
+    let jps = add2MonthsMinus1(c.returnDate);
     jps = addDays(jps, 1); // 第2回開始
     let jitanNum = 2;
     for (let i = 0; i < 10; i++) {
@@ -1430,7 +1331,6 @@ function getFemaleProcedures(c) {
         name: `育児時短就業給付金 第${jitanNum}回`,
         period: `${fmtDate(jps)} 〜 ${fmtDate(jend)}`,
         deadline: jdeadline,
-        availableDate: addDays(jend, 1),
         sendDate: addDays(jend, -5),
         docs: '育児時短就業給付金支給申請書・賃金台帳・出勤簿',
         note: '各月賃金の10%。支給限度額471,393円。最低2,411円以下不支給。',
@@ -1510,7 +1410,6 @@ function getMaleProcedures(c) {
       name: '出生時育児休業給付金（産後パパ育休給付）',
       period: b ? `出生後8週間以内（〜${fmtDate(d.papaPeriodEnd)}）` : '—',
       deadline: papaDeadline,
-      availableDate: d.papaPeriodEnd ? addDays(d.papaPeriodEnd, 1) : null,
       sendDate: d.papaPeriodEnd ? addDays(d.papaPeriodEnd, 3) : null,
       docs: '①育児休業給付受給資格確認票・出生時育児休業給付金支給申請書（専用様式・通常育休の様式と別）　②雇用保険被保険者休業開始時賃金月額証明書（①と同時提出）　③母子手帳（出生届出済証明ページ）のコピー　④出生時育児休業申出書のコピー　⑤賃金台帳・出勤簿（対象期間分）　⑥通帳またはキャッシュカードのコピー',
       note: '⚠️ 申請受付開始は産後8週間経過後。賃金証明書と同時に申請する。\n就業日数が最大10日（10日超の場合は80時間）以下であること。\n2回分割取得の場合も1回の申請書で申請可。',
@@ -1567,7 +1466,6 @@ function getMaleProcedures(c) {
       name: '育児休業給付金 受給資格確認・第1回支給申請',
       period: d.kyufuPeriods[0] ? `${fmtDate(d.kyufuPeriods[0].start)} 〜 ${fmtDate(d.kyufuPeriods[0].end)}` : '—',
       deadline: d.kyufuPeriods[0] ? d.kyufuPeriods[0].deadline : null,
-      availableDate: d.kyufuPeriods[0] ? addDays(d.kyufuPeriods[0].end, 1) : null,
       sendDate: d.kyufuPeriods[0] ? addDays(d.kyufuPeriods[0].end, -5) : null,
       docs: '育児休業給付受給資格確認票・（初回）育児休業給付金支給申請書・母子手帳（出生届出済証明ページ）のコピー・賃金台帳・出勤簿',
       note: '賃金証明書と同時提出可（産後パパ育休後に引き続く場合も初回申請が必要な場合あり）',
@@ -1582,7 +1480,6 @@ function getMaleProcedures(c) {
           name: `育児休業給付金 第${p.num}回${isLast ? '【延長確認必須】' : ''}`,
           period: `${fmtDate(p.start)} 〜 ${fmtDate(p.end)}`,
           deadline: p.deadline,
-          availableDate: addDays(p.end, 1),
           sendDate: addDays(p.end, -5),
           docs: '育児休業給付金支給申請書・賃金台帳・出勤簿',
           note: isLast ? '⚠️ 延長の場合：①延長事由認定申告書②保育所申込書写し③入所保留通知書を添付' : '',
@@ -1608,7 +1505,6 @@ function getMaleProcedures(c) {
       name: '育児休業給付金 受給資格確認・第2回ブロック初回支給申請',
       period: d.kyufuPeriods.filter(p => p.blockNum === 2)[0] ? `${fmtDate(d.kyufuPeriods.filter(p => p.blockNum === 2)[0].start)} 〜 ${fmtDate(d.kyufuPeriods.filter(p => p.blockNum === 2)[0].end)}` : '—',
       deadline: d.kyufuPeriods.filter(p => p.blockNum === 2)[0]?.deadline || null,
-      availableDate: d.kyufuPeriods.filter(p => p.blockNum === 2)[0] ? addDays(d.kyufuPeriods.filter(p => p.blockNum === 2)[0].end, 1) : null,
       sendDate: d.kyufuPeriods.filter(p => p.blockNum === 2)[0] ? addDays(d.kyufuPeriods.filter(p => p.blockNum === 2)[0].end, -5) : null,
       docs: '育児休業給付受給資格確認票・（初回）育児休業給付金支給申請書・母子手帳（出生届出済証明ページ）・賃金台帳・出勤簿',
       note: '分割取得の場合、2回目ブロックでも受給資格確認が必要な場合あり（ハローワークで確認）',
@@ -1620,7 +1516,6 @@ function getMaleProcedures(c) {
           name: `育児休業給付金 第${p.num}回`,
           period: `${fmtDate(p.start)} 〜 ${fmtDate(p.end)}`,
           deadline: p.deadline,
-          availableDate: addDays(p.end, 1),
           sendDate: addDays(p.end, -5),
           docs: '育児休業給付金支給申請書・賃金台帳・出勤簿',
           note: '',
@@ -1644,8 +1539,8 @@ function getMaleProcedures(c) {
     id: 'm-yoiku', no: '②',
     name: '養育期間標準報酬月額特例申出書',
     period: null,
-    deadline: c.returnDate ? c.returnDate : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, -7) : null,
+    deadline: c.returnDate ? addDays(c.returnDate, 60) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 14) : null,
     docs: '養育期間標準報酬月額特例申出書・住民票（続柄記載）',
     note: '3歳未満の子を養育する場合',
   });
@@ -1653,13 +1548,13 @@ function getMaleProcedures(c) {
     id: 'm-gekkan', no: '③',
     name: '育休終了時報酬月額変更届（状況により）',
     period: c.returnDate ? `${fmtDate(c.returnDate)} 〜 ${fmtDate(addDays(c.returnDate, 90))}` : null,
-    deadline: c.returnDate ? addDays(c.returnDate, 90) : null,
-    sendDate: c.returnDate ? addDays(c.returnDate, 85) : null,
+    deadline: c.returnDate ? addDays(c.returnDate, 100) : null,
+    sendDate: c.returnDate ? addDays(c.returnDate, 89) : null,
     docs: '月額変更届・賃金台帳（復帰後3か月分）',
     note: '復帰後3か月の賃金確定後',
   });
   // ── 育児時短就業給付金（男性・復帰後に時短の場合・2歳育休取得者は対象外） ──
-  if (c.ikukyuExtend !== '2y') {
+  if (c.ikukyuExtend !== '2y' && c.jitan === '1') {
   procs.push({ section: '【育児時短就業給付金（復帰後に時短勤務する場合）】', isSectionHeader: true, isMale: true });
   const mJitanEnd2y = calcSecondBirthday(c.birthDate || c.dueDate);
   const mJitanInitDeadline = c.returnDate ? addDays(c.returnDate, 120) : null;
@@ -1720,17 +1615,9 @@ function getStatus(c) {
     return '復帰済';
   }
   if (c.gender === 'male') {
-    // 産後パパ育休中（第1回）
-    if (c.papa1Start && t >= c.papa1Start && c.papa1End && t <= c.papa1End) return '産後パパ育休中';
-    // 産後パパ育休中（第2回）
-    if (c.papa2Start && t >= c.papa2Start && (!c.papa2End || t <= c.papa2End)) return '産後パパ育休中';
-    // 通常育休中（第1回）
-    if (c.ikukyu1Start && t >= c.ikukyu1Start && (!c.ikukyu1End || t <= c.ikukyu1End)) return '育休中';
-    // 通常育休中（第2回）
-    if (c.ikukyu2Start && t >= c.ikukyu2Start && (!c.ikukyu2End || t <= c.ikukyu2End)) return '育休中';
-    // 産後パパ育休が終わっていて次の育休が未登録の場合も産後パパ育休中とみなす
-    if (c.papa1Start && c.papa1End && t > c.papa1End && !c.ikukyu1Start) return '産後パパ育休中';
-    return '育休前';
+    if (c.papa1Start && t >= c.papa1Start && (!c.papa1End || t <= c.papa1End)) return '産後パパ育休中';
+    if (c.ikukyu1Start && t >= c.ikukyu1Start) return '育休中';
+    return b && t >= b ? '育休前' : '育休前';
   }
   const d = getFemaleDates(c);
   if (d.ikukyuStart && t >= d.ikukyuStart) return '育休中';
@@ -1747,7 +1634,6 @@ function getAlerts(c) {
     if (status === '済' || status === '不要') return;
     if (p.deadline && p.deadline < t) alerts.push({ type: 'overdue', proc: p });
     else if (p.deadline && daysUntil(p.deadline) <= 7) alerts.push({ type: 'soon', proc: p });
-    else if (p.availableDate && p.availableDate <= t) alerts.push({ type: 'available', proc: p });
   });
   return alerts;
 }
@@ -1786,14 +1672,13 @@ async function saveNewCase(gender) {
       returnDate: document.getElementById('ff-return-date').value,
       ikukyuExtend: document.getElementById('ff-ikukyu-extend').value,
       jitan: document.getElementById('ff-jitan').value,
-      jitanStartDate: document.getElementById('ff-jitan-start-date').value,
       spouseIkukyu: document.getElementById('ff-spouse-ikukyu').value,
       memo: document.getElementById('ff-memo').value.trim(),
       procStatus: {}, createdAt: new Date().toISOString(),
     };
     cases.push(c); await save();
     closeModal('modal-new-female');
-    ['ff-company','ff-name','ff-child-name','ff-due-date','ff-birth-date','ff-return-date','ff-jitan-start-date','ff-memo'].forEach(id => document.getElementById(id).value = '');
+    ['ff-company','ff-name','ff-child-name','ff-due-date','ff-birth-date','ff-return-date','ff-memo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('ff-dates-preview').style.display = 'none';
   } else {
     const company = document.getElementById('fm-company').value.trim();
@@ -1843,22 +1728,12 @@ function renderCaseTable() {
   const genderF = document.getElementById('gender-filter').value;
   const statusF = document.getElementById('status-filter').value;
   const alertF = document.getElementById('alert-filter').value;
-  function hasKobunshoWaiting(c) {
-    const procs = getProcedures(c).filter(p => !p.isSectionHeader && isKobunshoRequired(p.id));
-    return procs.some(p => {
-      const st = getProcSt(c, p.id);
-      if (st !== '済') return false; // 申請済みのもののみ対象
-      const kb = getKobunsho(c, p.id);
-      return kb === '未';
-    });
-  }
   let filtered = cases.filter(c => {
     if (search && !c.company.toLowerCase().includes(search) && !c.name.toLowerCase().includes(search)) return false;
     if (companyF && c.company !== companyF) return false;
     if (genderF && c.gender !== genderF) return false;
     if (statusF && getStatus(c) !== statusF) return false;
     if (alertF === 'alert' && getAlerts(c).length === 0) return false;
-    if (alertF === 'kobunsho' && !hasKobunshoWaiting(c)) return false;
     return true;
   });
   const container = document.getElementById('case-table-container');
@@ -1866,32 +1741,15 @@ function renderCaseTable() {
     container.innerHTML = `<div class="empty" style="padding:60px 20px;"><div class="empty-icon">📋</div><div class="empty-text">案件がありません</div></div>`;
     return;
   }
-  // 出産予定日順（未設定は末尾）
-  filtered.sort((a, b) => {
-    const da = a.dueDate || '9999-99-99';
-    const db = b.dueDate || '9999-99-99';
-    return da < db ? -1 : da > db ? 1 : 0;
-  });
   const rows = filtered.map(c => {
     const status = getStatus(c);
     const alerts = getAlerts(c);
     const overdue = alerts.filter(a => a.type === 'overdue').length;
     const soon = alerts.filter(a => a.type === 'soon').length;
-    const available = alerts.filter(a => a.type === 'available').length;
     const gLabel = c.gender === 'male' ? '<span class="gender-badge male">♂ 男性</span>' : '<span class="gender-badge female">♀ 女性</span>';
     let nextDeadline = '—';
     const futureDead = getProcedures(c).filter(p => !p.isSectionHeader && p.deadline && getProcSt(c, p.id) !== '済' && daysUntil(p.deadline) >= 0).sort((a,b) => a.deadline > b.deadline ? 1 : -1);
     if (futureDead[0]) nextDeadline = `${fmtDate(futureDead[0].deadline)}<br><span style="font-size:10px;">${futureDead[0].name.slice(0,16)}…</span>`;
-    // 公文書待ちフィルター時：待ち手続き名を収集
-    const kobunshoWaitingNames = alertF === 'kobunsho' ? (() => {
-      return getProcedures(c)
-        .filter(p => !p.isSectionHeader && isKobunshoRequired(p.id))
-        .filter(p => getProcSt(c, p.id) === '済' && getKobunsho(c, p.id) === '未')
-        .map(p => p.name.replace(/【.*?】/g, '').trim().slice(0, 20));
-    })() : [];
-    const kobunshoChips = kobunshoWaitingNames.length > 0
-      ? kobunshoWaitingNames.map(n => `<span class="alert-chip" style="background:#e8f0fd;color:#2980b9;">📬 ${n}</span>`).join('')
-      : '';
     return `<tr class="row-link" onclick="openCaseDetail('${c.id}')">
       <td>${gLabel}</td>
       <td><strong>${c.company}</strong></td>
@@ -1901,11 +1759,9 @@ function renderCaseTable() {
       <td class="date-display">${fmtDate(c.birthDate)}</td>
       <td class="date-display" style="font-size:11px;">${nextDeadline}</td>
       <td><div class="alert-row">
-        ${kobunshoChips}
-        ${!kobunshoChips && overdue > 0 ? `<span class="alert-chip red">超過${overdue}件</span>` : ''}
-        ${!kobunshoChips && soon > 0 ? `<span class="alert-chip orange">7日内${soon}件</span>` : ''}
-        ${!kobunshoChips && available > 0 ? `<span class="alert-chip" style="background:#eef7f2;color:#27ae60;">申請可${available}件</span>` : ''}
-        ${!kobunshoChips && alerts.length === 0 ? '<span style="font-size:11px;color:var(--text-muted);">問題なし</span>' : ''}
+        ${overdue > 0 ? `<span class="alert-chip red">超過${overdue}件</span>` : ''}
+        ${soon > 0 ? `<span class="alert-chip orange">7日内${soon}件</span>` : ''}
+        ${alerts.length === 0 ? '<span style="font-size:11px;color:var(--text-muted);">問題なし</span>' : ''}
       </div></td>
     </tr>`;
   }).join('');
@@ -1934,36 +1790,21 @@ function openCaseDetail(id) {
     }
     const st = getProcSt(c, p.id);
     const stDate = getProcDate(c, p.id);
-    const stMemo = getProcMemo(c, p.id);
     const overdue = p.deadline && p.deadline < t && st !== '済' && st !== '不要';
     const displaySt = overdue ? '期限超過' : st;
     const deadlineStyle = p.deadline && daysUntil(p.deadline) <= 7 && st !== '済' && st !== '不要' ? 'color:var(--red);font-weight:700;' : '';
     const daysLabel = p.deadline && daysUntil(p.deadline) >= 0 && st !== '済' ? `<br><span style="font-size:10px;color:var(--text-muted);">あと${daysUntil(p.deadline)}日</span>` : '';
     const dateInput = st === '済' ? `<br><input type="date" value="${stDate||''}" style="margin-top:4px;font-size:10px;border:1px solid var(--green);border-radius:4px;padding:2px 4px;color:var(--green);background:var(--green-bg);width:120px;" onchange="updateProcDate('${p.id}','${id}',this.value,event)" onclick="event.stopPropagation()">` : '';
-    const escapedMemo = (stMemo || '').replace(/"/g, '&quot;');
-    const memoInput = `<input type="text" value="${escapedMemo}" placeholder="備考" style="margin-top:5px;display:block;width:100%;font-size:11px;border:1px solid #c5d8ee;border-radius:4px;padding:3px 7px;font-family:inherit;color:#6a8fad;background:#f0f5fb;" onchange="updateProcMemo('${p.id}','${id}',this.value,event)" onclick="event.stopPropagation()">`;
-    const needsKobunsho = isKobunshoRequired(p.id);
-    const kobunshoSt = needsKobunsho ? getKobunsho(c, p.id) : null;
-    const kobunshoCell = needsKobunsho ? `
-      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px;">
-        <span style="font-size:10px;color:var(--text-muted);min-width:36px;">公文書</span>
-        <button class="status-btn ${kobunshoSt === '済' ? '済' : kobunshoSt === '不要' ? '不要' : '未'}" style="font-size:10px;padding:2px 8px;" onclick="updateKobunsho('${p.id}','${id}','${kobunshoSt === '未' ? '済' : '未'}',event)">${kobunshoSt === '済' ? '済' : '未'}</button>
-        ${kobunshoSt !== '不要' ? `<button class="status-btn 不要" style="font-size:10px;padding:2px 8px;" onclick="updateKobunsho('${p.id}','${id}','${kobunshoSt === '不要' ? '未' : '不要'}',event)">不要</button>` : `<button class="status-btn 不要" style="font-size:10px;padding:2px 8px;" onclick="updateKobunsho('${p.id}','${id}','未',event)">不要解除</button>`}
-      </div>` : '';
     return `<tr>
       <td style="white-space:nowrap;color:var(--text-muted);font-size:11px;">${p.no}</td>
       <td style="max-width:200px;font-size:12px;">${p.name}${p.note ? `<br><span style="font-size:10px;color:var(--text-muted);white-space:pre-line;">${p.note}</span>` : ''}</td>
       <td style="font-size:11px;color:var(--text-muted);max-width:160px;">${p.period || '—'}</td>
       <td style="font-size:11px;max-width:200px;color:var(--text-muted);">${p.docs || '—'}</td>
       <td style="white-space:nowrap;font-size:11px;${deadlineStyle}">${p.deadline ? fmtDate(p.deadline) : '—'}${daysLabel}</td>
-      <td style="min-width:220px;">
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-          <button class="status-btn ${displaySt}" onclick="toggleStatus('${p.id}','${id}',event)">${displaySt}</button>
-          ${st !== '不要' ? `<button class="status-btn 不要" style="font-size:10px;" onclick="setIryo('${p.id}','${id}',event)">不要</button>` : ''}
-          ${dateInput}
-        </div>
-        ${kobunshoCell}
-        ${memoInput}
+      <td style="white-space:nowrap;min-width:160px;">
+        <button class="status-btn ${displaySt}" onclick="toggleStatus('${p.id}','${id}',event)">${displaySt}</button>
+        ${st !== '不要' ? `<button class="status-btn 不要" style="margin-left:4px;font-size:10px;" onclick="setIryo('${p.id}','${id}',event)">不要</button>` : ''}
+        ${dateInput}
       </td>
     </tr>`;
   }).join('');
@@ -1978,7 +1819,6 @@ function openCaseDetail(id) {
       <div class="info-item highlight"><div class="info-item-label">育休開始日</div><div class="info-item-value date">${fmtDate(d.ikukyuStart)}</div></div>
       <div class="info-item"><div class="info-item-label">育休終了日（${calcIkukyuEndLabel(c.ikukyuExtend)}）</div><div class="info-item-value date">${fmtDate(d.ikukyuEnd)}</div></div>
       <div class="info-item"><div class="info-item-label">職場復帰予定日</div><div class="info-item-value date">${fmtDate(c.returnDate)}</div></div>
-      <div class="info-item${c.jitanStartDate && c.jitanStartDate !== c.returnDate ? ' warn' : ''}"><div class="info-item-label">時短勤務開始日${c.jitanStartDate && c.jitanStartDate !== c.returnDate ? '（復帰日と異なる）' : ''}</div><div class="info-item-value date">${c.jitanStartDate ? fmtDate(c.jitanStartDate) : (c.returnDate ? fmtDate(c.returnDate) + '（復帰日と同じ）' : '—')}</div></div>
       <div class="info-item"><div class="info-item-label">出産予定日 / 実分娩日</div><div class="info-item-value date">${fmtDate(c.dueDate)} / ${fmtDate(c.birthDate)}</div></div>
     </div>`;
   } else {
@@ -2050,7 +1890,6 @@ function openEditModal() {
         <div class="form-group"><label>実分娩日</label><input class="form-input" type="date" id="e-birth-date" value="${c.birthDate||''}"></div>
         <div class="form-group"><label>復帰予定日</label><input class="form-input" type="date" id="e-return-date" value="${c.returnDate||''}"></div>
         <div class="form-group"><label>復帰後の勤務形態</label><select class="form-select" id="e-jitan"><option value="" ${!c.jitan?'selected':''}>通常勤務</option><option value="1" ${c.jitan==='1'?'selected':''}>時短勤務</option></select></div>
-        <div class="form-group"><label>時短勤務開始日（復帰日と異なる場合）</label><input class="form-input" type="date" id="e-jitan-start-date" value="${c.jitanStartDate||''}" placeholder="空欄の場合は復帰日を使用"></div>
         <div class="form-group"><label>育休延長</label><select class="form-select" id="e-ikukyu-extend"><option value="" ${!c.ikukyuExtend?'selected':''}>延長なし（1歳）</option><option value="18m" ${c.ikukyuExtend==='18m'?'selected':''}>1歳6か月まで</option><option value="2y" ${c.ikukyuExtend==='2y'?'selected':''}>2歳まで</option></select></div>
         <div class="form-group"><label>配偶者育休</label><select class="form-select" id="e-spouse-ikukyu"><option value="yes" ${c.spouseIkukyu==='yes'?'selected':''}>14日以上取得</option><option value="sangokyu" ${c.spouseIkukyu==='sangokyu'?'selected':''}>産後休業なし</option><option value="musho" ${c.spouseIkukyu==='musho'?'selected':''}>無業・自営</option><option value="no" ${c.spouseIkukyu==='no'?'selected':''}>取得なし</option><option value="unknown" ${c.spouseIkukyu==='unknown'?'selected':''}>未確認</option></select></div>
         <div class="form-group full"><label>備考</label><textarea class="form-textarea" id="e-memo">${c.memo||''}</textarea></div>
@@ -2095,7 +1934,6 @@ async function saveEdit() {
   c.returnDate = document.getElementById('e-return-date').value;
   if (document.getElementById('e-ikukyu-extend')) c.ikukyuExtend = document.getElementById('e-ikukyu-extend').value;
   if (document.getElementById('e-jitan')) c.jitan = document.getElementById('e-jitan').value;
-  if (document.getElementById('e-jitan-start-date')) c.jitanStartDate = document.getElementById('e-jitan-start-date').value;
   c.spouseIkukyu = document.getElementById('e-spouse-ikukyu').value;
   c.memo = document.getElementById('e-memo').value.trim();
   if (c.gender === 'male') {
@@ -2135,12 +1973,9 @@ function renderDashboard() {
     procs.forEach(p => {
       const status = getProcSt(c, p.id);
       if (status === '済' || status === '不要') { if(status==='済') done++; return; }
-      const days = p.deadline ? daysUntil(p.deadline) : null;
-      if (days !== null && days < 0) {
-        upcomingItems.push({ c, p, days, type: 'overdue' });
-      } else if (p.availableDate && p.availableDate <= today() && (!p.deadline || days >= 0)) {
-        upcomingItems.push({ c, p, days: 0, type: 'available' });
-      }
+      if (!p.deadline) return;
+      const days = daysUntil(p.deadline);
+      if (days !== null && days <= 14) upcomingItems.push({ c, p, days });
     });
   });
   document.getElementById('stat-total').textContent = cases.length;
@@ -2152,54 +1987,46 @@ function renderDashboard() {
   upcomingItems.sort((a,b) => a.days - b.days);
   const el = document.getElementById('dashboard-upcoming');
   if (upcomingItems.length === 0) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">期限超過の手続きはありません</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">直近14日以内の期限はありません</div></div>`;
     return;
   }
-  el.innerHTML = `<div class="upcoming-list">${upcomingItems.slice(0,10).map(({c,p,days,type}) => {
-    const isAvailable = type === 'available';
-    const cls = days < 0 ? 'urgent' : isAvailable ? 'soon' : '';
-    const dayLabel = days < 0 ? `${Math.abs(days)}日超過` : isAvailable ? '申請可能' : `あと${days}日`;
+  el.innerHTML = `<div class="upcoming-list">${upcomingItems.slice(0,10).map(({c,p,days}) => {
+    const cls = days < 0 ? 'urgent' : days <= 3 ? 'urgent' : days <= 7 ? 'soon' : '';
+    const dayLabel = days < 0 ? `${Math.abs(days)}日超過` : days === 0 ? '今日' : `あと${days}日`;
     const gIcon = c.gender === 'male' ? '♂' : '♀';
     return `<div class="upcoming-item ${cls}" onclick="openCaseDetail('${c.id}')" style="cursor:pointer;">
       <div class="upcoming-date"><div class="day">${dayLabel}</div><div style="font-size:10px;margin-top:2px;">${fmtDate(p.deadline)}</div></div>
       <div style="flex:1;"><div class="upcoming-title">${gIcon} ${p.name}</div><div class="upcoming-meta">${c.company} / ${c.name}</div></div>
-      <div class="upcoming-badge"><span class="badge ${days < 0 ? '期限超過' : isAvailable ? '育休中' : '未'}">${days < 0 ? '期限超過' : isAvailable ? '申請可能' : '対応待ち'}</span></div>
+      <div class="upcoming-badge"><span class="badge ${days < 0 ? '期限超過' : '未'}">${days < 0 ? '期限超過' : '対応待ち'}</span></div>
     </div>`;
   }).join('')}</div>`;
 }
 
 function renderUpcoming() {
   const allItems = [];
-  const t = today();
   cases.forEach(c => {
     getProcedures(c).filter(p => !p.isSectionHeader).forEach(p => {
+      if (!p.deadline) return;
       const status = getProcSt(c, p.id);
       if (status === '済' || status === '不要') return;
-      const days = p.deadline ? daysUntil(p.deadline) : null;
-      // 期限超過
-      if (days !== null && days < 0) {
-        allItems.push({ c, p, days, type: 'overdue' });
-      // 申請可能（支給期間終了翌日以降・期限内）
-      } else if (p.availableDate && p.availableDate <= t && (days === null || days >= 0)) {
-        allItems.push({ c, p, days: days ?? 999, type: 'available' });
-      }
+      const days = daysUntil(p.deadline);
+      if (days !== null && days <= 30) allItems.push({ c, p, days });
     });
   });
   allItems.sort((a,b) => a.days - b.days);
   const el = document.getElementById('upcoming-content');
   if (allItems.length === 0) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">対応が必要な手続きはありません</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">30日以内の期限はありません</div></div>`;
     return;
   }
-  el.innerHTML = `<div class="upcoming-list">${allItems.map(({c,p,days,type}) => {
-    const isAvailable = type === 'available';
-    const cls = !isAvailable ? 'urgent' : 'soon';
-    const dayLabel = days < 0 ? `${Math.abs(days)}日超過` : isAvailable ? '申請可能' : `あと${days}日`;
+  el.innerHTML = `<div class="upcoming-list">${allItems.map(({c,p,days}) => {
+    const cls = days < 0 ? 'urgent' : days <= 7 ? 'soon' : '';
+    const dayLabel = days < 0 ? `${Math.abs(days)}日超過` : days === 0 ? '今日期限' : `あと${days}日`;
     const gIcon = c.gender === 'male' ? '♂' : '♀';
     return `<div class="upcoming-item ${cls}" onclick="openCaseDetail('${c.id}')" style="cursor:pointer;">
       <div class="upcoming-date"><div class="day">${dayLabel}</div><div style="font-size:10px;margin-top:3px;">${fmtDate(p.deadline)}</div></div>
       <div style="flex:1;"><div class="upcoming-title">${gIcon} ${p.name}</div><div class="upcoming-meta">${c.company} / ${c.name}${p.period ? `　${p.period}` : ''}</div></div>
-      <span class="badge ${isAvailable ? '育休中' : '期限超過'}">${isAvailable ? '申請可能' : '期限超過'}</span>
+      <span class="badge ${days < 0 ? '期限超過' : '未'}">${days < 0 ? '期限超過' : '未対応'}</span>
     </div>`;
   }).join('')}</div>`;
 }
@@ -2216,7 +2043,6 @@ function openNewCaseModal(gender) {
   document.getElementById(gender === 'male' ? 'modal-new-male' : 'modal-new-female').classList.add('open');
 }
 function filterByStatus(s) { document.getElementById('status-filter').value = s; document.getElementById('gender-filter').value = ''; openPage('cases'); renderCaseTable(); }
-function filterByAlert(a) { document.getElementById('alert-filter').value = a; document.getElementById('status-filter').value = ''; document.getElementById('gender-filter').value = ''; openPage('cases'); renderCaseTable(); }
 function filterByGender(g) { document.getElementById('gender-filter').value = g; document.getElementById('status-filter').value = ''; openPage('cases'); renderCaseTable(); }
 function switchTab(name) {
   ['female-client','male-client','internal'].forEach(t => {
@@ -2774,43 +2600,6 @@ function handleImportFile(event) {
 }
 function renderAll() { renderDashboard(); renderCaseTable(); }
 
-// ===== 自動再読み込み（5分ごと） =====
-let _lastSyncTime = Date.now();
-let _autoReloadTimer = null;
-
-async function autoReload() {
-  // モーダルが開いている間はスキップ（編集中のデータを守る）
-  const anyOpen = document.querySelector('.modal-overlay.open');
-  if (anyOpen) {
-    updateSyncStatus();
-    return;
-  }
-  const prev = JSON.stringify(cases);
-  const loaded = await loadFromSupabase();
-  if (loaded) {
-    _lastSyncTime = Date.now();
-    const next = JSON.stringify(cases);
-    if (prev !== next) {
-      renderAll();
-      showToast('🔄 最新データに更新しました');
-    }
-  }
-  updateSyncStatus();
-}
-
-function updateSyncStatus() {
-  const mins = Math.floor((Date.now() - _lastSyncTime) / 60000);
-  const el = document.getElementById('sync-status');
-  if (el) {
-    el.textContent = mins === 0 ? '☁️ 同期済（たった今）' : ('☁️ 同期済（' + mins + '分前）');
-    el.style.color = mins >= 6 ? 'var(--orange)' : 'rgba(255,255,255,0.7)';
-  }
-}
-
-// 1分ごとに表示を更新、5分ごとに再読み込み
-setInterval(updateSyncStatus, 60000);
-setInterval(autoReload, 5 * 60 * 1000);
-
 // INIT
 document.getElementById('today-date').textContent =
   new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
@@ -2827,8 +2616,6 @@ document.getElementById('today-date').textContent =
   } else {
     showToast('✅ データを読み込みました（' + cases.length + '件）');
   }
-  _lastSyncTime = Date.now();
-  updateSyncStatus();
   renderAll();
 })();
 
