@@ -195,6 +195,18 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
 .toast{position:fixed;bottom:24px;right:24px;z-index:999;background:#0F172A;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);transform:translateY(20px);opacity:0;transition:all .3s;pointer-events:none;}
 .toast.show{transform:translateY(0);opacity:1;}
 
+/* 案件メモ */
+#case-memo-panel{padding:8px 18px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;}
+.case-memo-label{font-size:11px;color:#475569;font-weight:600;margin-bottom:4px;display:block;}
+.case-memo-input{width:100%;font-size:11px;font-family:inherit;border:1px solid #E2E8F0;border-radius:5px;padding:5px 8px;background:#fff;resize:vertical;min-height:36px;outline:none;color:#334155;transition:border-color .15s;}
+.case-memo-input:focus{border-color:#2563EB;}
+
+/* タスク個別メモ */
+.task-memo-wrap{padding:4px 10px 6px 47px;background:#FAFAFA;border-top:1px solid #F1F5F9;}
+.task-memo-input{width:100%;font-size:10px;font-family:inherit;border:1px solid #E2E8F0;border-radius:4px;padding:3px 7px;background:#fff;outline:none;color:#475569;resize:none;min-height:28px;transition:border-color .15s;}
+.task-memo-input:focus{border-color:#94A3B8;}
+.task-memo-input::placeholder{color:#CBD5E1;}
+
 /* レスポンシブ */
 @media(max-width:800px){
   #sb{display:none;}
@@ -284,6 +296,11 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
         <button style="background:#0EA5E9;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;" onclick="saveTanto()">記録</button>
         <span class="tanto-hist" id="tanto-hist"></span>
       </div>
+      <!-- 案件メモパネル -->
+      <div id="case-memo-panel">
+        <label class="case-memo-label">📝 案件メモ（全体への備考）</label>
+        <textarea class="case-memo-input" id="case-memo-input" placeholder="例：申請期間：4/1〜4/30、担当医：〇〇病院" oninput="saveCaseMemo(this.value)"></textarea>
+      </div>
       <!-- チェックリスト本体 -->
       <div id="cl-body"></div>
     </div>
@@ -301,6 +318,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F1F5F9;min-height:100vh;f
     <div class="fg">
       <label class="fl">対象者氏名</label>
       <input class="fi" id="n-na" type="text" placeholder="山田 太郎（任意）">
+    </div>
+    <div class="fg">
+      <label class="fl">申請回数（任意）</label>
+      <input class="fi" id="n-round" type="text" placeholder="例：第2回（省略可）" style="max-width:200px;">
     </div>
     <div class="fg">
       <label class="fl">手続き種別 <span class="req">*</span></label>
@@ -882,6 +903,9 @@ async function loadData() {
       waitMemo: r.wait_memo || '',
       tantoLog: r.tanto_log || [],
       rousaiShoshiki: r.rousai_shoshiki || [],
+      caseMemo: r.case_memo || '',
+      taskMemos: r.task_memos || {},
+      round: r.round || '',
     }));
     _lastSync = Date.now();
     setSyncStatus('☁️ 同期済');
@@ -901,6 +925,9 @@ async function saveCase(c) {
     wait_memo: c.waitMemo || '',
     tanto_log: c.tantoLog || [],
     rousai_shoshiki: c.rousaiShoshiki || [],
+    case_memo: c.caseMemo || '',
+    task_memos: c.taskMemos || {},
+    round: c.round || '',
     updated_at: new Date().toISOString(),
   };
   const ok = await sbUpdate(c.id, payload);
@@ -1082,7 +1109,7 @@ function renderDash() {
         <div class="dc-ico">${p.icon}</div>
         <div class="dc-inf">
           <div class="dc-co">${esc(c.company)}</div>
-          <div class="dc-sub">${esc(c.name||'')}${c.name?' · ':''}${esc(c.created_at ? c.created_at.split('T')[0] : '')}</div>
+          <div class="dc-sub">${esc(c.name||'')}${c.name?' · ':''}${c.round?`<span style='background:#FEF9C3;color:#B45309;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;margin-right:3px;'>${esc(c.round)}</span>`:''}${esc(c.created_at ? c.created_at.split('T')[0] : '')}</div>
         </div>
         <div class="dc-right">
           <span class="dc-proc" style="background:${p.color}18;color:${p.color}">${esc(c.proc)}</span>
@@ -1170,6 +1197,13 @@ function renderChecklist() {
   document.getElementById('tanto-hist').innerHTML = tantoHist;
   document.getElementById('tanto-input').value = '';
 
+  // 案件メモパネル
+  const caseMemoEl = document.getElementById('case-memo-input');
+  if (caseMemoEl) caseMemoEl.value = c.caseMemo || '';
+  // 第〇回バッジ表示
+  const roundBadge = c.round ? `<span style="background:#FEF9C3;color:#B45309;padding:2px 9px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">${esc(c.round)}</span>` : '';
+  document.getElementById('cl-name').innerHTML = esc(c.name || '') + roundBadge;
+
   // チェックリスト本体
   let sn = 0, html = '';
   // 労災の場合は選択した様式のセクションのみ表示
@@ -1202,10 +1236,20 @@ function renderChecklist() {
           <button class="task-toggle" onclick="toggleNote('${task.id}')">${ex?'▲':'▼'}</button>
         </div>
         ${ex ? `<div class="task-note">💡 ${esc(task.note)}</div>` : ''}
+        <div class="task-memo-wrap">
+          <textarea class="task-memo-input" rows="1" placeholder="メモ..." id="tm-${task.id}" onchange="saveTaskMemo('${task.id}',this.value)" onfocus="this.rows=2" onblur="this.rows=1"></textarea>
+        </div>
       </div>`;
     });
   });
   document.getElementById('cl-body').innerHTML = html;
+  // タスクメモの値をセット（テンプレートリテラル汚染を避けるため）
+  if (c.taskMemos) {
+    Object.entries(c.taskMemos).forEach(([tid, val]) => {
+      const el = document.getElementById('tm-' + tid);
+      if (el && val) el.value = val;
+    });
+  }
 }
 
 async function toggleTask(taskId) {
@@ -1248,6 +1292,31 @@ async function toggleWaitFlag(key, val) {
   if (!c.waitFlags) c.waitFlags = {};
   c.waitFlags[key] = val;
   await saveCase(c);
+}
+
+// 案件メモ保存
+let _caseMemoTimer = null;
+function saveCaseMemo(val) {
+  clearTimeout(_caseMemoTimer);
+  _caseMemoTimer = setTimeout(async () => {
+    const c = cases.find(x => x.id === currentId);
+    if (!c) return;
+    c.caseMemo = val;
+    await saveCase(c);
+  }, 800);
+}
+
+// タスク個別メモ保存
+let _taskMemoTimer = null;
+function saveTaskMemo(taskId, val) {
+  clearTimeout(_taskMemoTimer);
+  _taskMemoTimer = setTimeout(async () => {
+    const c = cases.find(x => x.id === currentId);
+    if (!c) return;
+    if (!c.taskMemos) c.taskMemos = {};
+    c.taskMemos[taskId] = val;
+    await saveCase(c);
+  }, 800);
 }
 
 let _waitMemoTimer = null;
@@ -1325,6 +1394,7 @@ function toggleShoshiki(key, el) {
 async function createCase() {
   const co = document.getElementById('n-co').value.trim();
   const na = document.getElementById('n-na').value.trim();
+  const round = document.getElementById('n-round') ? document.getElementById('n-round').value.trim() : '';
   if (!co || !selProc) return;
   const procKey = selProc;
   // 労災の場合、選択した様式を収集
@@ -1337,6 +1407,7 @@ async function createCase() {
   closeModal('ov-new');
   document.getElementById('n-co').value = '';
   document.getElementById('n-na').value = '';
+  if (document.getElementById('n-round')) document.getElementById('n-round').value = '';
   selProc = null;
   document.getElementById('n-submit').disabled = true;
   setSyncStatus('🔄 保存中...');
@@ -1345,6 +1416,7 @@ async function createCase() {
     company: co, name: na, proc: procKey,
     status: 'none', checks: {}, wait_flags: {}, wait_memo: '', tanto_log: [],
     rousai_shoshiki: rousaiShoshiki,
+    case_memo: '', task_memos: {}, round: round,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   };
   const row = await sbInsert(payload);
@@ -1357,6 +1429,9 @@ async function createCase() {
       waitMemo: row.wait_memo || '',
       tantoLog: row.tanto_log || [],
       rousaiShoshiki: row.rousai_shoshiki || [],
+      caseMemo: row.case_memo || '',
+      taskMemos: row.task_memos || {},
+      round: row.round || '',
     };
     cases.push(c);
     localStorage.setItem('cl-cases', JSON.stringify(cases));
