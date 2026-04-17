@@ -852,7 +852,13 @@ let selProc = null;
 let _lastSync = Date.now();
 
 function gp(c) { return P[c.proc] || P['入社']; }
-function allTasks(c) { return gp(c).sections.flatMap(s => s.tasks); }
+function allTasks(c) {
+  const p = gp(c);
+  const sections = (p.isRousai && c.rousaiShoshiki && c.rousaiShoshiki.length > 0)
+    ? p.sections.filter(s => !s.rousaiKey || c.rousaiShoshiki.includes(s.rousaiKey))
+    : p.sections;
+  return sections.flatMap(s => s.tasks);
+}
 function pct(c) { const a = allTasks(c); return a.length ? Math.round(a.filter(t => c.checks[t.id]).length / a.length * 100) : 0; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function today() { return new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'}); }
